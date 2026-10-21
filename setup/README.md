@@ -17,12 +17,12 @@ setup/
     flatpak.sh          按需装 flatpak、加 flathub 源、选国内镜像
   steps/
     01-preflight.sh     系统检查、基础工具、paru、定位仓库
-    02-packages.sh      必需软件分组安装、AUR、可选软件 fzf 勾选
+    02-packages.sh      必需软件分组安装、AUR、可选软件逐项询问
     03-dotfiles.sh      备份旧配置、stow 部署、壁纸链接、路径替换
     04-apps.sh          nvim / zsh / mpv / yazi
     05-system.sh        locale、PATH、PAM、matugen、系统服务、ly、用户目录
     99-completion.sh    完成提示与重启
-  common-applist.txt    可选软件清单：安装时 fzf 勾选，改这里就能增删
+  common-applist.txt    可选软件清单：安装时逐项询问，改这里就能增删
   resources/            安装器素材区：不走 stow，运行时复制到家目录
     必看-pullautumn-Niri使用方法.txt   部署后复制到 ~/
 ```
@@ -36,7 +36,7 @@ setup/
 | `install_aur_helper` | 01 | 添加 archlinuxcn 源，装 paru |
 | `clone_dotfiles` | 01 | 本地运行直接用当前仓库，否则克隆到 `~/.dotfiles` |
 | `install_packages` | 02 | 按 `PKG_GROUPS` 分组装必需包，再装必需的 AUR 包 |
-| `install_optional_packages` | 02 | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装（`--yes` 则全装，不弹界面） |
+| `install_optional_packages` | 02 | 读 `common-applist.txt`，逐项询问后按 repo / AUR / flatpak 分类安装（`--yes` 则全装） |
 | `apply_dotfiles` | 03 | 备份 → stow → 壁纸链接 → 权限 → 用户名替换 → flatpak 覆盖 |
 | `setup_nvim` | 04 | 装 neovim，同步 LazyVim 插件 |
 | `setup_zsh` | 04 | 装 zsh，改默认 shell（配置由 zshenv/zsh 包提供） |
@@ -98,4 +98,4 @@ bash install.sh --reset         # 清空进度，重新开始
 - 移除了上游的 quickshell / tmux / fish / ghostty / SDDM 相关步骤。
 - 显示管理器使用 ly（`ly@tty1`），不再使用 SDDM。
 - 新增 `--yes` / `--no-reboot` 参数。
-- 可选软件改为独立清单 `common-applist.txt` + fzf 勾选，不再写在脚本里。
+- 可选软件改为独立清单 `common-applist.txt` + 逐项询问，不再写在脚本里。

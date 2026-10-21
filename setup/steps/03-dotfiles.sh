@@ -134,12 +134,21 @@ _dotfiles_fix_permissions() {
         "$HOME/.config/niri/scripts"
         "$HOME/.config/waybar/scripts"
         "$HOME/.config/matugen/scripts"
+        "$HOME/.config/rofi"
     )
     local d
     for d in "${dirs[@]}"; do
         [[ -d "$d" ]] || continue
         find -L "$d" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} + 2>/dev/null || true
     done
+
+    # rofi 的启动器是「内容为相对路径的跳转文件」，没有 .sh 后缀，
+    # 需要单独赋权，否则 waybar 的 launcher 点击后无反应。
+    if [[ -d "$HOME/.config/rofi" ]]; then
+        find -L "$HOME/.config/rofi" -type f \( -name "launcher_t*" -o -name "powermenu_t*" \) \
+            -exec chmod +x {} + 2>/dev/null || true
+    fi
+
     print_ok "脚本可执行权限已设置"
 }
 

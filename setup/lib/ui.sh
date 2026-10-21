@@ -134,10 +134,10 @@ confirm() {
     fi
 
     echo -ne "   ${YELLOW}[?]${NC} $prompt"
-    if [[ -r /dev/tty ]]; then
-        read -r response < /dev/tty
+    if _tty_ok; then
+        read -r response < /dev/tty || response=""
     else
-        read -r response || true
+        read -r response || response=""
     fi
     response="${response:-$default}"
     [[ "$response" =~ ^[Yy]$ ]]

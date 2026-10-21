@@ -1,3 +1,6 @@
+# zi 未安装时跳过插件部分，避免每条 zi 都报 command not found
+if (( ${+functions[zi]} )) || (( $+commands[zi] )); then
+
 # 加载 zsh 的 高亮 man 和 sudo 插件
 zi snippet OMZ::plugins/colored-man-pages/colored-man-pages.plugin.zsh
 zi snippet OMZ::plugins/sudo/sudo.plugin.zsh
@@ -56,13 +59,18 @@ zi light zsh-users/zsh-autosuggestions
 zi ice wait"0e" lucid atinit"zpcompinit;zpcdreplay"
 zi light zdharma-continuum/fast-syntax-highlighting
 
+unset zi
+
+fi  # end: zi 可用时
+
 # 加载 zoxide插件
 export _ZO_DATA_DIR=$HOME/.local/share/zoxide
-eval "$(zoxide init zsh --no-cmd)"
-alias zl='zoxide query -i'
-alias z='__zoxide_z'
-alias c='print -z $(zl)'
-unset zi
+if (( $+commands[zoxide] )); then
+    eval "$(zoxide init zsh --no-cmd)"
+    alias zl='zoxide query -i'
+    alias z='__zoxide_z'
+    alias c='print -z $(zl)'
+fi
 
 
 

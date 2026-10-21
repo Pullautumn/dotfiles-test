@@ -100,14 +100,42 @@ install_packages() {
             else
                 print_warn "Some AUR packages failed (check log)"
             fi
-        else
-            print_info "AUR packages may prompt for provider selection"
-            # 交互安装，保留 provider 选择（matugen/waypaper-git 等可能询问）
-            if $AUR_HELPER "${aur_opts[@]}" "${AUR_PACKAGES[@]}" < /dev/tty; then
+        elif confirm "安装 ${#AUR_PACKAGES[@]} 个 AUR 包？（会逐个询问）" "n"; then
+            # 交互安装：逐个 AUR 包让 paru 自己确认（provider 选择、PKGBUILD 审阅等）
+            print_info "AUR 包会逐个询问，请按需确认（paru 可能还会问 provider 选择）"
+            echo ""
+
+            local pkg aur_failed=0
+            for pkg in "${AUR_PACKAGES[@]}"; do
+                if is_done "aur_$pkg"; then
+                    echo -e "   ${GREEN}[OK]${NC} $pkg ${DIM}(done)${NC}"
+                    continue
+                fi
+
+                print_info "安装 $pkg"
+                local aur_rc=0
+                if _tty_ok; then
+                    $AUR_HELPER "${aur_opts[@]}" "$pkg" < /dev/tty || aur_rc=$?
+                else
+                    $AUR_HELPER "${aur_opts[@]}" "$pkg" || aur_rc=$?
+                fi
+
+                if [[ $aur_rc -eq 0 ]]; then
+                    mark_done "aur_$pkg"
+                    print_ok "$pkg"
+                else
+                    print_warn "$pkg 安装失败（可能已跳过）"
+                    aur_failed=$((aur_failed + 1))
+                fi
+            done
+
+            if [[ $aur_failed -eq 0 ]]; then
                 mark_done "aur_packages"
             else
-                print_warn "Some AUR packages failed"
+                print_warn "$aur_failed 个 AUR 包未装成功（见日志）"
             fi
+        else
+            print_skip "AUR packages (user declined)"
         fi
     fi
 
@@ -121,7 +149,7 @@ install_packages() {
 # 前缀约定：AUR:xxx / flatpak:xxx / 无前缀 = 官方仓库
 # ==============================================================================
 
-# 供 fzf 的输入：<包名>\t<# 说明>
+# 供列表显示的输入：<包名>\t<# 说明>
 _optional_entries() {
     local list_file="$COMMON_APPLIST"
 
@@ -132,7 +160,7 @@ _optional_entries() {
         | sed -E 's/[[:space:]]+$//'
 }
 
-# fzf 批量勾选；stdout 只输出选中行，提示信息走 stderr
+# 逐项询问是否安装；被选中的条目写入 stdout（一行一个）
 _optional_select() {
     local entries
     if ! entries=$(_optional_entries); then
@@ -148,66 +176,59 @@ _optional_select() {
     local count
     count=$(printf '%s\n' "$entries" | wc -l)
 
-    {
-        echo ""
-        echo -e "   ${WHITE}可选软件${NC} ${DIM}(清单共 ${count} 项)${NC}"
-        echo -e "   ${DIM}回车 = 打开勾选界面 ｜ n = 跳过 ｜ 60 秒无操作 = 跳过${NC}"
-        printf "   是否挑选要安装的可选软件？[Y/n]: "
-    } >&2
+    echo "" >&2
+    echo -e "   ${WHITE}可选软件${NC} ${DIM}(清单共 ${count} 项)${NC}" >&2
+    echo -e "   ${DIM}逐项确认：y = 安装 ｜ n 或回车 = 跳过 ｜ 全部完成后自动继续${NC}" >&2
 
-    local choice="" read_status=0
-    if _tty_ok; then
-        read -r -t 60 choice < /dev/tty || read_status=$?
-    else
-        read_status=1
-    fi
-    echo >&2
-
-    if [[ $read_status -ne 0 ]]; then
-        print_info "超时，跳过可选软件" >&2
-        return 1
+    # 交互输入走 fd9：终端可用时读 /dev/tty，否则读 stdin 的副本，
+    # 避免与下面的 while read 抢同一路输入。
+    local tty_ok=false input_file=""
+    _tty_ok && tty_ok=true
+    if ! $tty_ok; then
+        input_file=$(mktemp)
+        cat > "$input_file"
+        exec 9< "$input_file"
     fi
 
-    case "$choice" in
-        [nN])
-            print_info "已跳过可选软件" >&2
-            return 1
-            ;;
-    esac
+    local line name desc idx=0 picked=0 answer
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        idx=$((idx + 1))
+        name=$(printf '%s' "$line" | cut -f1 | xargs)
+        desc=$(printf '%s' "$line" | cut -f2 | sed 's/^#[[:space:]]*//')
+        [[ -z "$name" ]] && continue
 
-    if ! command_exists fzf; then
-        print_info "安装 fzf..." >&2
-        if ! sudo pacman -S --needed --noconfirm fzf >> "$LOG_FILE" 2>&1; then
-            print_warn "fzf 安装失败，跳过可选软件" >&2
-            return 1
+        echo "" >&2
+        printf "   ${DIM}[%2d/%d]${NC} %-38s ${DIM}%s${NC}\n" \
+            "$idx" "$count" "$name" "$desc" >&2
+        printf "   ${YELLOW}[?]${NC} 安装 %s？[y/N]: " "${name}" >&2
+
+        answer=""
+        if $tty_ok; then
+            read -r answer < /dev/tty || break
+        else
+            read -r -u 9 answer || break
         fi
+
+        case "$answer" in
+            [yY]*)
+                printf '%s\n' "$line"
+                picked=$((picked + 1))
+                ;;
+        esac
+    done <<< "$entries"
+
+    if ! $tty_ok; then
+        exec 9<&-
+        rm -f "$input_file"
     fi
 
-    # stdin 是管道，fzf 界面自动走 /dev/tty，只有选中结果进 stdout
-    printf '%s\n' "$entries" \
-        | fzf --multi \
-              --layout=reverse \
-              --border \
-              --margin=1,2 \
-              --prompt="搜索软件 > " \
-              --pointer=">>" \
-              --marker="* " \
-              --delimiter=$'\t' \
-              --with-nth=1 \
-              --bind 'ctrl-a:select-all,ctrl-d:deselect-all' \
-              --info=inline \
-              --header="[TAB] 勾选 | [ENTER] 安装 | [Ctrl-A] 全选 | [Ctrl-D] 清空 | [ESC] 跳过" \
-              --preview 'echo {} | cut -f2 | sed "s/^# //"' \
-              --preview-window=down:40%:wrap:border-up \
-              --color=dark \
-              --color=fg+:white,bg+:black \
-              --color=hl:blue,hl+:blue:bold \
-              --color=header:yellow:bold \
-              --color=info:magenta \
-              --color=prompt:cyan,pointer:cyan:bold,marker:green:bold
+    echo "" >&2
+    print_info "已选 $picked 项" >&2
+    return 0
 }
 
-# 把 fzf 的输出解析进 OPT_REPO / OPT_AUR / OPT_FLATPAK
+# 把选中行解析进 OPT_REPO / OPT_AUR / OPT_FLATPAK
 _optional_collect() {
     local selected="$1"
     local line raw
