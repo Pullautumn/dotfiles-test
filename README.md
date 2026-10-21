@@ -31,68 +31,68 @@ Arch Linux + [niri](https://github.com/YaLTeR/niri) 的个人配置，整套用 
 
 ## 包含的配置
 
-顶层每个目录就是一个 [GNU Stow](https://www.gnu.org/software/stow/) 包，目录内保持 `~` 下的相对路径。每个包的配置项、快捷键、注意事项都写在该目录下的 `README.md` 里，点包名直接跳转。
+顶层每个目录就是一个 [GNU Stow](https://www.gnu.org/software/stow/) 包，目录内保持 `~` 下的相对路径。每个包的配置项、快捷键、注意事项都写在该目录下的 `README.md` 里，点表格最右列的 `README` 直接跳转。
 
 ### 窗口与桌面
 
-| 包 | 部署到 | 说明 |
-|---|---|---|
-| [`niri`](niri/.config/niri/README.md) | `~/.config/niri` | 合成器配置、按键绑定、`conf.d/` 分片、`scripts/` |
-| [`waybar`](waybar/.config/waybar/README.md) | `~/.config/waybar` | 状态栏样式与模块脚本 |
-| [`waybar-niri-Win11Like`](waybar-niri-Win11Like/.config/waybar-niri-Win11Like/README.md) | `~/.config/waybar-niri-Win11Like` | 备选 Win11 风格状态栏，独立目录不冲突，默认随主配置一起部署，`Mod+F3` 切换 |
-| [`swaync`](swaync/.config/swaync/README.md) | `~/.config/swaync` | 通知中心（默认方案） |
-| [`mako`](mako/.config/mako/README.md) | `~/.config/mako` | 轻量通知守护（备用方案） |
-| [`fuzzel`](fuzzel/.config/fuzzel/README.md) | `~/.config/fuzzel` | 应用启动器 |
-| [`rofi`](rofi/.config/rofi/README.md) | `~/.config/rofi` | 应用启动器 / dmenu 模式 |
-| [`wlogout`](wlogout/.config/wlogout/README.md) | `~/.config/wlogout` | 电源菜单 |
-| [`gtklock`](gtklock/.config/gtklock/README.md) | `~/.config/gtklock` | 锁屏（需 `/etc/pam.d/gtklock`，安装器会建） |
-| [`swaylock`](swaylock/.config/swaylock/README.md) | `~/.config/swaylock` | 锁屏（备用） |
-| [`satty`](satty/.config/satty/README.md) | `~/.config/satty` | 截图标注 |
-| [`obs-studio`](obs-studio/.config/obs-studio/README.md) | `~/.config/obs-studio` | 录屏与直播 |
-| [`xdg-desktop-portal`](xdg-desktop-portal/.config/xdg-desktop-portal/README.md) | `~/.config/xdg-desktop-portal` | 门户配置（截图 / 录屏走 gnome 后端） |
+| 配置 | 说明 | 部署到 | 文档 |
+|---|---|---|---|
+| **niri** | 合成器配置、按键绑定、`conf.d/` 分片、`scripts/` | `~/.config/niri` | [README](niri/.config/niri/README.md) |
+| **waybar** | 状态栏样式与模块脚本 | `~/.config/waybar` | [README](waybar/.config/waybar/README.md) |
+| **waybar-niri-Win11Like** | 备选 Win11 风格状态栏，独立目录不冲突，默认随主配置一起部署，`Mod+F3` 切换 | `~/.config/waybar-niri-Win11Like` | [README](waybar-niri-Win11Like/.config/waybar-niri-Win11Like/README.md) |
+| **swaync** | 通知中心（默认方案） | `~/.config/swaync` | [README](swaync/.config/swaync/README.md) |
+| **mako** | 轻量通知守护（备用方案） | `~/.config/mako` | [README](mako/.config/mako/README.md) |
+| **fuzzel** | 应用启动器 | `~/.config/fuzzel` | [README](fuzzel/.config/fuzzel/README.md) |
+| **rofi** | 应用启动器 / dmenu 模式 | `~/.config/rofi` | [README](rofi/.config/rofi/README.md) |
+| **wlogout** | 电源菜单 | `~/.config/wlogout` | [README](wlogout/.config/wlogout/README.md) |
+| **gtklock** | 锁屏（需 `/etc/pam.d/gtklock`，安装器会建） | `~/.config/gtklock` | [README](gtklock/.config/gtklock/README.md) |
+| **swaylock** | 锁屏（备用） | `~/.config/swaylock` | [README](swaylock/.config/swaylock/README.md) |
+| **satty** | 截图标注 | `~/.config/satty` | [README](satty/.config/satty/README.md) |
+| **obs-studio** | 录屏与直播 | `~/.config/obs-studio` | [README](obs-studio/.config/obs-studio/README.md) |
+| **xdg-desktop-portal** | 门户配置（截图 / 录屏走 gnome 后端） | `~/.config/xdg-desktop-portal` | [README](xdg-desktop-portal/.config/xdg-desktop-portal/README.md) |
 
 ### 终端与 Shell
 
-| 包 | 部署到 | 说明 |
-|---|---|---|
-| [`kitty`](kitty/.config/kitty/README.md) | `~/.config/kitty` | 终端模拟器 |
-| [`starship`](starship/.config/starship/README.md) | `~/.config/starship.toml` | 提示符 |
-| [`zsh`](zsh/.config/zsh/README.md) | `~/.config/zsh` | Zsh 配置与插件 |
-| [`zshenv`](zshenv/README.md) | `~/.zshenv` | 指向 `ZDOTDIR` 的环境文件 |
-| [`btop`](btop/.config/btop/README.md) | `~/.config/btop` | 系统监控 |
-| [`fastfetch`](fastfetch/.config/fastfetch/README.md) | `~/.config/fastfetch` | 系统信息 |
+| 配置 | 说明 | 部署到 | 文档 |
+|---|---|---|---|
+| **kitty** | 终端模拟器 | `~/.config/kitty` | [README](kitty/.config/kitty/README.md) |
+| **starship** | 提示符 | `~/.config/starship.toml` | [README](starship/.config/starship/README.md) |
+| **zsh** | Zsh 配置与插件 | `~/.config/zsh` | [README](zsh/.config/zsh/README.md) |
+| **zshenv** | 指向 `ZDOTDIR` 的环境文件 | `~/.zshenv` | [README](zshenv/README.md) |
+| **btop** | 系统监控 | `~/.config/btop` | [README](btop/.config/btop/README.md) |
+| **fastfetch** | 系统信息 | `~/.config/fastfetch` | [README](fastfetch/.config/fastfetch/README.md) |
 
 ### 应用
 
-| 包 | 部署到 | 说明 |
-|---|---|---|
-| [`nvim`](nvim/.config/nvim/README.md) | `~/.config/nvim` | Neovim + LazyVim |
-| [`yazi`](yazi/.config/yazi/README.md) | `~/.config/yazi` | 终端文件管理器 |
-| [`mpv`](mpv/.config/mpv/README.md) | `~/.config/mpv` | 播放器配置与脚本 |
-| [`Thunar`](Thunar/.config/Thunar/README.md) | `~/.config/Thunar` | 图形文件管理器 |
+| 配置 | 说明 | 部署到 | 文档 |
+|---|---|---|---|
+| **nvim** | Neovim + LazyVim | `~/.config/nvim` | [README](nvim/.config/nvim/README.md) |
+| **yazi** | 终端文件管理器 | `~/.config/yazi` | [README](yazi/.config/yazi/README.md) |
+| **mpv** | 播放器配置与脚本 | `~/.config/mpv` | [README](mpv/.config/mpv/README.md) |
+| **Thunar** | 图形文件管理器 | `~/.config/Thunar` | [README](Thunar/.config/Thunar/README.md) |
 
 ### 主题与外观
 
-| 包 | 部署到 | 说明 |
-|---|---|---|
-| [`matugen`](matugen/.config/matugen/README.md) | `~/.config/matugen` | 配色模板与生成脚本 |
-| [`waypaper`](waypaper/.config/waypaper/README.md) | `~/.config/waypaper` | 图形化壁纸切换 |
-| [`fontconfig`](fontconfig/.config/fontconfig/README.md) | `~/.config/fontconfig` | 字体优先级 |
-| [`gtk-3.0`](gtk-3.0/.config/gtk-3.0/README.md) | `~/.config/gtk-3.0` | GTK 主题、配色与书签 |
-| [`environment.d`](environment.d/.config/environment.d/README.md) | `~/.config/environment.d` | 会话级环境变量（输入法、缩放等） |
+| 配置 | 说明 | 部署到 | 文档 |
+|---|---|---|---|
+| **matugen** | 配色模板与生成脚本 | `~/.config/matugen` | [README](matugen/.config/matugen/README.md) |
+| **waypaper** | 图形化壁纸切换 | `~/.config/waypaper` | [README](waypaper/.config/waypaper/README.md) |
+| **fontconfig** | 字体优先级 | `~/.config/fontconfig` | [README](fontconfig/.config/fontconfig/README.md) |
+| **gtk-3.0** | GTK 主题、配色与书签 | `~/.config/gtk-3.0` | [README](gtk-3.0/.config/gtk-3.0/README.md) |
+| **environment.d** | 会话级环境变量（输入法、缩放等） | `~/.config/environment.d` | [README](environment.d/.config/environment.d/README.md) |
 
 ### 输入法与杂项
 
-| 包 | 部署到 | 说明 |
-|---|---|---|
-| [`fcitx5`](fcitx5/.config/fcitx5/README.md) | `~/.config/fcitx5` | 输入法配置（含 Rime） |
-| [`local-share-fcitx5`](local-share-fcitx5/.local/share/fcitx5/README.md) | `~/.local/share/fcitx5` | 输入法皮肤与词库 |
-| [`local-share-applications`](local-share-applications/.local/share/applications/README.md) | `~/.local/share/applications` | 自定义 .desktop |
-| [`mimeapps`](mimeapps/README.md) | `~/.config/mimeapps.list` | 默认打开方式，用**绝对路径**链接，避免被写穿 |
-| [`scripts`](scripts/.config/scripts/README.md) | `~/.config/scripts` | 通用脚本 |
-| [`local-bin`](local-bin/.local/bin/README.md) | `~/.local/bin` | 命令入口，已由 `setup_bash_path` 加进 PATH |
+| 配置 | 说明 | 部署到 | 文档 |
+|---|---|---|---|
+| **fcitx5** | 输入法配置（含 Rime） | `~/.config/fcitx5` | [README](fcitx5/.config/fcitx5/README.md) |
+| **local-share-fcitx5** | 输入法皮肤与词库 | `~/.local/share/fcitx5` | [README](local-share-fcitx5/.local/share/fcitx5/README.md) |
+| **local-share-applications** | 自定义 .desktop | `~/.local/share/applications` | [README](local-share-applications/.local/share/applications/README.md) |
+| **mimeapps** | 默认打开方式，用**绝对路径**链接，避免被写穿 | `~/.config/mimeapps.list` | [README](mimeapps/README.md) |
+| **scripts** | 通用脚本 | `~/.config/scripts` | [README](scripts/.config/scripts/README.md) |
+| **local-bin** | 命令入口，已由 `setup_bash_path` 加进 PATH | `~/.local/bin` | [README](local-bin/.local/bin/README.md) |
 
-> `tlpui/` 目录存在于仓库中，但没列入安装器的部署清单，需要时手动 `stow tlpui`。
+> `tlpui/` 目录存在于仓库中，但没列入安装器的部署清单，需要时手动 `stow tlpui`（[README](tlpui/README.md)）。
 
 ## 从零开始安装
 
@@ -123,7 +123,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 2 | `install_aur_helper` | 加 archlinuxcn 源，装 `paru`（已有 paru/yay 则直接复用） |
 | Phase 3 | `clone_dotfiles` | 本地运行时直接用当前目录，否则克隆到 `~/.dotfiles` |
 | Phase 4 | `install_packages` | 按 20 个包组装 90 个仓库包 |
-| Phase 4b | 同上 | 装 8 个必需 AUR 包 |
+| Phase 4b | 同上 | 装 7 个必需 AUR 包（逐包显示进度，不询问） |
 | Phase 4c | `install_optional_packages` | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装 |
 | Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接 → 脚本权限 → 路径替换 → flatpak 主题放行 |
 | Phase 6a | `setup_nvim` | 装 Neovim，`Lazy! sync` 拉齐插件，可选装 LSP 依赖 |
@@ -147,7 +147,6 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 2. 换壁纸：`waypaper`（选完会自动跑 matugen 重新配色）
 3. 配输入法：`fcitx5-configtool`
 4. 显示器特殊的话，改 `~/.config/niri/conf.d/output.kdl`
-5. 完整操作速查见主目录下的 `必看-pullautumn-Niri使用方法.txt`
 
 如果没装 ly，从 TTY 手动启动：
 
@@ -160,7 +159,6 @@ niri-session
 | 参数 | 说明 |
 |---|---|
 | `--minimal` | 只装核心，跳过可选软件与 flatpak |
-| `--no-aur` | 不装 paru，AUR 包会被跳过 |
 | `--no-stow` | 只装软件，不部署配置 |
 | `--yes` | 全程自动确认，可选软件按清单全部安装，不弹任何询问 |
 | `--no-reboot` | 装完不自动重启 |
@@ -208,9 +206,9 @@ paru -S --needed \
     python python-pip nodejs npm mpv yazi brightnessctl wlsunset \
     google-chrome firefox
 
-# 必需 AUR 包（8 个）
+# 必需 AUR 包（7 个）
 paru -S --needed \
-    matugen waypaper-git python-pywalfox lazyvim \
+    matugen waypaper-git python-pywalfox \
     ttf-jetbrains-maple-mono-nf-xx-xx ttf-lxgw-wenkai-screen \
     niri-sidebar-git wl-screenrec-git
 ```
@@ -291,7 +289,7 @@ sudo systemctl enable ly@tty1     # 用 ly 作为登录入口
 | 亮度色温 | `brightnessctl` `wlsunset` |
 | 浏览器 | `google-chrome` `firefox` |
 
-**AUR 包（8 个，配置直接依赖）**
+**AUR 包（7 个，配置直接依赖）**
 
 | 包 | 用途 |
 |---|---|
@@ -302,7 +300,6 @@ sudo systemctl enable ly@tty1     # 用 ly 作为登录入口
 | `ttf-lxgw-wenkai-screen` | 霞鹜文楷屏幕版（中文正文字体） |
 | `niri-sidebar-git` | niri 侧边栏 |
 | `wl-screenrec-git` | Wayland 录屏 |
-| `lazyvim` | Neovim 配置框架 |
 
 **几个"看着像可选、其实不能删"的依赖**
 

@@ -26,7 +26,6 @@ STATE_FILE="$HOME/.pullautumn_install_progress"
 
 # Install options
 INSTALL_MINIMAL=false
-SKIP_AUR=false
 SKIP_STOW=false
 ASSUME_YES=false
 NO_REBOOT=false
@@ -114,6 +113,8 @@ PKG_GROUP_NAMES=(
 # ==============================================================================
 # AUR Packages (配置依赖，必须安装)
 # ==============================================================================
+# 注：matugen 已在官方仓库，这里一并交给 paru 处理（repo 包也装得了）。
+# LazyVim 不是 AUR 包（AUR 里没有这个名字），它由 nvim 配置首次启动时自举。
 AUR_PACKAGES=(
     matugen
     waypaper-git
@@ -122,7 +123,6 @@ AUR_PACKAGES=(
     ttf-lxgw-wenkai-screen
     niri-sidebar-git
     wl-screenrec-git
-    lazyvim
 )
 
 # ==============================================================================

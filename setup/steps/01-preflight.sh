@@ -82,11 +82,6 @@ install_base() {
 install_aur_helper() {
     section "Phase 2" "AUR Helper (paru)"
 
-    if $SKIP_AUR; then
-        print_skip "AUR helper (--no-aur)"
-        return
-    fi
-
     if command_exists paru; then
         print_ok "paru already installed"
         AUR_HELPER="paru"

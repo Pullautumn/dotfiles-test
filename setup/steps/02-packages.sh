@@ -1,11 +1,43 @@
 # shellcheck shell=bash
 
 # 统一安装器：与 jswysnemc 原版一致，仓库包与 AUR 包一律走 AUR helper。
-# 只有 --no-aur 让 AUR_HELPER 为空时，才退回 pacman。
+# 只有 paru/yay 都不可用时（极端情况），才退回 pacman。
 _resolve_installer() {
     if [[ -z "$AUR_HELPER" ]]; then
         AUR_HELPER="sudo pacman"
     fi
+}
+
+# 逐个安装软件包：已装过的直接标 OK，不再重新装；每个包单独一行进度。
+# 用法：_install_each "标题" 包名...
+# 返回值为失败个数
+_install_each() {
+    local title="$1"
+    shift
+
+    local -a pkgs=("$@")
+    [[ ${#pkgs[@]} -eq 0 ]] && return 0
+
+    local -a cmd=($AUR_HELPER -S --needed --noconfirm)
+    if [[ "$AUR_HELPER" == "paru" ]]; then
+        cmd=($AUR_HELPER -S --needed --skipreview --noconfirm)
+    fi
+
+    echo ""
+    echo -e "   ${CYAN}>>> ${title}${NC} ${DIM}(${#pkgs[@]} 个)${NC}"
+
+    local failed=0 p
+    for p in "${pkgs[@]}"; do
+        if pacman -Q "$p" &>/dev/null; then
+            echo -e "   ${GREEN}[OK]${NC} $p ${DIM}(已安装)${NC}"
+            continue
+        fi
+
+        echo -e "   ${YELLOW}[i]${NC} 安装 $p"
+        exe_spin "$p" "${cmd[@]}" "$p" || failed=$((failed + 1))
+    done
+
+    return $failed
 }
 
 install_packages() {
@@ -35,7 +67,22 @@ install_packages() {
         fi
 
         echo -e "   ${CYAN}[${current}/${total}]${NC} $name"
-        echo -e "         ${DIM}$packages${NC}"
+
+        # 先看这一组里哪些真的没装，全都装了就直接算成功
+        local -a want=()
+        local p
+        for p in $packages; do
+            pacman -Q "$p" &>/dev/null || want+=("$p")
+        done
+
+        if [[ ${#want[@]} -eq 0 ]]; then
+            echo -e "         ${DIM}$packages${NC}"
+            printf "         ${GREEN}[OK]${NC} 已安装，跳过            \n"
+            mark_done "pkg_$key"
+            continue
+        fi
+
+        echo -e "         ${DIM}${want[*]}${NC}"
 
         # Spinner
         local spin_pid
@@ -51,7 +98,7 @@ install_packages() {
         spin_pid=$!
 
         local result=0
-        if $AUR_HELPER -S --needed --noconfirm $packages >> "$LOG_FILE" 2>&1; then
+        if $AUR_HELPER -S --needed --noconfirm "${want[@]}" >> "$LOG_FILE" 2>&1; then
             result=0
         else
             result=1
@@ -84,60 +131,16 @@ install_packages() {
     elif is_done "aur_packages"; then
         print_skip "AUR packages (already done)"
     else
-        echo -e "   ${DIM}${AUR_PACKAGES[*]}${NC}"
+        # 逐个装、逐个显示，全程不再询问（已装的直接标 OK）
+        local aur_failed=0
+        _install_each "AUR 包" "${AUR_PACKAGES[@]}" || aur_failed=$?
+
         echo ""
-
-        local aur_opts=(-S --needed)
-        if [[ "$AUR_HELPER" == "paru" ]]; then
-            aur_opts+=(--skipreview)
-        fi
-
-        if [[ "${ASSUME_YES:-false}" == "true" ]]; then
-            print_info "Installing AUR packages (--yes mode, no prompts)"
-            local aur_cmd=($AUR_HELPER)
-            if exe_spin "AUR packages (${#AUR_PACKAGES[@]})" \
-                "${aur_cmd[@]}" "${aur_opts[@]}" --noconfirm "${AUR_PACKAGES[@]}"; then
-                mark_done "aur_packages"
-                print_ok "AUR packages installed"
-            else
-                print_warn "Some AUR packages failed (check log)"
-            fi
-        elif confirm "安装 ${#AUR_PACKAGES[@]} 个 AUR 包？（会逐个询问）" "n"; then
-            # 交互安装：逐个 AUR 包让 paru 自己确认（provider 选择、PKGBUILD 审阅等）
-            print_info "AUR 包会逐个询问，请按需确认（paru 可能还会问 provider 选择）"
-            echo ""
-
-            local pkg aur_failed=0
-            for pkg in "${AUR_PACKAGES[@]}"; do
-                if is_done "aur_$pkg"; then
-                    echo -e "   ${GREEN}[OK]${NC} $pkg ${DIM}(done)${NC}"
-                    continue
-                fi
-
-                print_info "安装 $pkg"
-                local aur_rc=0
-                if _tty_ok; then
-                    $AUR_HELPER "${aur_opts[@]}" "$pkg" < /dev/tty || aur_rc=$?
-                else
-                    $AUR_HELPER "${aur_opts[@]}" "$pkg" || aur_rc=$?
-                fi
-
-                if [[ $aur_rc -eq 0 ]]; then
-                    mark_done "aur_$pkg"
-                    print_ok "$pkg"
-                else
-                    print_warn "$pkg 安装失败（可能已跳过）"
-                    aur_failed=$((aur_failed + 1))
-                fi
-            done
-
-            if [[ $aur_failed -eq 0 ]]; then
-                mark_done "aur_packages"
-            else
-                print_warn "$aur_failed 个 AUR 包未装成功（见日志）"
-            fi
+        if [[ $aur_failed -eq 0 ]]; then
+            mark_done "aur_packages"
+            print_ok "AUR 包全部就绪"
         else
-            print_skip "AUR packages (user declined)"
+            print_warn "$aur_failed 个 AUR 包未装成功（见日志）"
         fi
     fi
 
@@ -247,51 +250,20 @@ _optional_install() {
 
     # --- 官方仓库 ---
     if [[ ${#OPT_REPO[@]} -gt 0 ]]; then
-        echo ""
-        echo -e "   ${CYAN}>>> 仓库包${NC} ${DIM}(${#OPT_REPO[@]} 个)${NC}"
-        echo -e "       ${DIM}${OPT_REPO[*]}${NC}"
-
-        local repo_cmd=($AUR_HELPER)
-        if ! exe_spin "仓库包 (${#OPT_REPO[@]})" \
-            "${repo_cmd[@]}" -S --needed --noconfirm "${OPT_REPO[@]}"; then
-            print_warn "部分仓库包安装失败（见日志）"
-            failed=$((failed + 1))
-        fi
+        local repo_rc=0
+        _install_each "仓库包" "${OPT_REPO[@]}" || repo_rc=$?
+        failed=$((failed + repo_rc))
     fi
 
     # --- AUR ---
     if [[ ${#OPT_AUR[@]} -gt 0 ]]; then
-        echo ""
-        echo -e "   ${CYAN}>>> AUR 包${NC} ${DIM}(${#OPT_AUR[@]} 个)${NC}"
-        echo -e "       ${DIM}${OPT_AUR[*]}${NC}"
-
         if [[ -z "$AUR_HELPER" ]]; then
             print_warn "没有可用的 AUR helper，跳过 AUR 包"
             failed=$((failed + 1))
         else
-            local aur_opts=(-S --needed)
-            if [[ "$AUR_HELPER" == "paru" ]]; then
-                aur_opts+=(--skipreview)
-            fi
-
             local aur_rc=0
-            local aur_cmd=($AUR_HELPER)
-            if [[ "${ASSUME_YES:-false}" == "true" ]]; then
-                # 无人值守：输出进日志，终端只看转圈
-                exe_spin "AUR 包 (${#OPT_AUR[@]})" \
-                    "${aur_cmd[@]}" "${aur_opts[@]}" --noconfirm "${OPT_AUR[@]}" || aur_rc=$?
-            elif _tty_ok; then
-                $AUR_HELPER "${aur_opts[@]}" "${OPT_AUR[@]}" < /dev/tty || aur_rc=$?
-            else
-                $AUR_HELPER "${aur_opts[@]}" "${OPT_AUR[@]}" || aur_rc=$?
-            fi
-
-            if [[ $aur_rc -eq 0 ]]; then
-                print_ok "AUR 包安装完成"
-            else
-                print_warn "部分 AUR 包安装失败"
-                failed=$((failed + 1))
-            fi
+            _install_each "AUR 包" "${OPT_AUR[@]}" || aur_rc=$?
+            failed=$((failed + aur_rc))
         fi
     fi
 

@@ -35,7 +35,7 @@ setup/
 | `install_base` | 01 | `pacman -Syu`，装 git / stow / base-devel |
 | `install_aur_helper` | 01 | 添加 archlinuxcn 源，装 paru |
 | `clone_dotfiles` | 01 | 本地运行直接用当前仓库，否则克隆到 `~/.dotfiles` |
-| `install_packages` | 02 | 按 `PKG_GROUPS` 分组装必需包，再装必需的 AUR 包（AUR 在 `--yes` 下带转圈进度，交互模式保留 paru 原始输出） |
+| `install_packages` | 02 | 按 `PKG_GROUPS` 分组装必需包（已装的组直接记 OK），再逐包装必需的 AUR 包，全程不询问 |
 | `install_optional_packages` | 02 | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装（`--yes` 则全装） |
 | `apply_dotfiles` | 03 | 备份 → stow → 壁纸链接 → 权限 → 用户名替换 → flatpak 覆盖 |
 | `setup_nvim` | 04 | 装 neovim，同步 LazyVim 插件 |
@@ -58,7 +58,6 @@ setup/
 ```bash
 bash install.sh                 # 全量安装
 bash install.sh --minimal       # 只装核心，跳过可选软件
-bash install.sh --no-aur        # 不装 paru（AUR 包会被跳过）
 bash install.sh --no-stow       # 只装软件，不动配置
 bash install.sh --yes           # 全程自动确认（可选软件按清单全装）
 bash install.sh --no-reboot     # 装完不自动重启

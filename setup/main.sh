@@ -30,7 +30,6 @@ Usage: ./install.sh [options]
 
 Options:
     --minimal    Install core packages only (skip optional groups & flatpak)
-    --no-aur     Skip AUR helper installation
     --no-stow    Skip config deployment
     --yes        Answer yes to every prompt (unattended runs)
     --no-reboot  Do not reboot automatically when finished
@@ -51,10 +50,6 @@ parse_args() {
         case "$1" in
             --minimal)
                 INSTALL_MINIMAL=true
-                shift
-                ;;
-            --no-aur)
-                SKIP_AUR=true
                 shift
                 ;;
             --no-stow)
