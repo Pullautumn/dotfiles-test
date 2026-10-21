@@ -1,0 +1,53 @@
+* {
+    font-family: "CommitMono Nerd Font Propo";
+    font-size: 17px;
+    font-weight: bold;
+    box-shadow: none;
+}
+
+window {
+    padding: 15px;
+}
+
+button {
+    border-radius: 14px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 32%;
+    min-width: 100px;
+    transition: all 0.25s ease-in-out;
+    padding: 25px;
+    margin: 10px;
+    border: 2px solid transparent;
+}
+
+button:active,
+button:hover {
+    background-size: 45%;
+}
+
+#lock {
+    background-image: image(url("assets/lock.png"));
+}
+
+#logout {
+    background-image: image(url("assets/logout.png"));
+}
+
+#suspend {
+    background-image: image(url("assets/suspend.png"));
+}
+
+#hibernate {
+    background-image: image(url("assets/hibernate.png"));
+}
+
+#shutdown {
+    background-image: image(url("assets/shutdown.png"));
+}
+
+#reboot {
+    background-image: image(url("assets/reboot.png"));
+}
+
+@import "colors.css";

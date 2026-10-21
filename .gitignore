@@ -1,0 +1,58 @@
+# 临时文件
+*.log
+*.tmp
+# 安装器进度记录
+.install_progress
+config_backup_*.tar.gz
+# 依赖目录
+node_modules/
+__pycache__/
+# 系统隐藏文件
+.DS_Store
+.idea/
+# 编译产物
+dist/
+build/
+
+
+# 忽略文件
+btop/.config/btop/themes/matugen.theme
+fastfetch/.config/fastfetch/config.jsonc
+fcitx5/.config/fcitx5/conf/cached_layouts
+fcitx5/.config/fcitx5/conf/classicui
+fcitx5/.config/fcitx5/conf/notifications.conf
+fcitx5/.config/fcitx5/profile
+fuzzel/.config/fuzzel/colors.ini
+kitty/.config/kitty/current-theme.conf
+kitty/.config/kitty/kitty.conf
+kitty/.config/kitty/kitty.conf.bak
+kitty/.config/kitty/themes/
+local-share-fcitx5/.local/share/fcitx5/rime/installation.yaml
+local-share-fcitx5/.local/share/fcitx5/rime/rime_ice.userdb/
+local-share-fcitx5/.local/share/fcitx5/rime/sync
+local-share-fcitx5/.local/share/fcitx5/rime/user.yaml
+local-share-fcitx5/.local/share/fcitx5/themes/
+mako/.config/mako/colors.conf
+.marscode/
+niri/.config/niri/conf.d/colors.conf
+niri/.config/niri/scripts/venv
+obs-studio/.config/obs-studio/matugen.obt
+obs-studio/.config/obs-studio/themes/
+Thunar/.config/Thunar/accels.scm
+wallpaper/Pictures/Wallpapers/api-random-download/
+wallpaper/Pictures/Wallpapers/cache-niri-auto-blur-bg
+wallpaper/Pictures/Wallpapers/cache-niri-overview-blur-dark
+wallpaper/Pictures/Wallpapers/wallpapers
+wallpapers/
+waybar-niri-Win11Like/.config/waybar-niri-Win11Like/colors.css
+yazi/.config/yazi/theme.toml
+gtk-3.0/.config/gtk-3.0/colors.css
+gtk-3.0/.config/gtk-3.0/gtk.css
+local-share-applications/.local/share/applications/mimeapps.list
+local-share-applications/.local/share/applications/mimeinfo.cache
+obs-studio/.config/obs-studio/logs/2026-03-27 14-56-03.txt
+obs-studio/.config/obs-studio/profiler_data/2026-03-27 14-56-03.csv.gz
+zsh/.config/zsh/.zcompdump-PullautumnArch-5.9
+zsh/.config/zsh/.zcompdump-PullautumnArch-5.9.zwc
+zsh/.config/zsh/.zcompdump
+
