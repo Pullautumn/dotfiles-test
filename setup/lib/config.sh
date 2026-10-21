@@ -17,7 +17,7 @@ NC='\033[0m'
 # ==============================================================================
 # Configuration
 # ==============================================================================
-DOTFILES_REPO="https://github.com/Pullautumn/dotfiles"
+DOTFILES_REPO="https://github.com/Pullautumn/dotfiles-test"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pullautumn"
 mkdir -p "$LOG_DIR"

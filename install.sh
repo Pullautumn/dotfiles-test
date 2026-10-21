@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-DOTFILES_REPO="https://github.com/Pullautumn/dotfiles"
+DOTFILES_REPO="https://github.com/Pullautumn/dotfiles-test"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 
 # If running from a checked-out repo, delegate to the modular installer.
