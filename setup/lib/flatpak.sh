@@ -84,11 +84,6 @@ _flatpak_install_one() {
         return 0
     fi
 
-    if sudo flatpak install -y --noninteractive flathub "$app" >> "$LOG_FILE" 2>&1; then
-        echo -e "   ${GREEN}[OK]${NC} $app"
-        return 0
-    fi
-
-    echo -e "   ${RED}[FAIL]${NC} $app"
-    return 1
+    # 输出进日志，终端只看转圈（样式与 install_packages 一致）
+    exe_spin "flatpak: $app" sudo flatpak install -y --noninteractive flathub "$app"
 }

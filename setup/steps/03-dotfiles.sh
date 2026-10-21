@@ -142,8 +142,9 @@ _dotfiles_fix_permissions() {
         find -L "$d" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} + 2>/dev/null || true
     done
 
-    # rofi 的启动器是「内容为相对路径的跳转文件」，没有 .sh 后缀，
-    # 需要单独赋权，否则 waybar 的 launcher 点击后无反应。
+    # rofi 的 scripts/launcher_tN、powermenu_tN 是「跳到对应主题脚本」的入口，
+    # 没有 .sh 后缀，上面的 *.sh 规则扫不到，必须单独赋权，
+    # 否则 waybar 的 launcher 点击后无反应。
     if [[ -d "$HOME/.config/rofi" ]]; then
         find -L "$HOME/.config/rofi" -type f \( -name "launcher_t*" -o -name "powermenu_t*" \) \
             -exec chmod +x {} + 2>/dev/null || true

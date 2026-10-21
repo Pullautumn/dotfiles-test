@@ -1,1 +1,4 @@
-../launchers/type-5/launcher.sh
+#!/bin/sh
+# 快捷入口：先定位脚本自身目录，再用相对路径执行对应主题的启动器（不依赖调用者的 cwd）
+cd "$(dirname "$0")" || exit 1
+exec ./../launchers/type-5/launcher.sh "$@"

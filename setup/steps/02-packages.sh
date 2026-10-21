@@ -94,7 +94,9 @@ install_packages() {
 
         if [[ "${ASSUME_YES:-false}" == "true" ]]; then
             print_info "Installing AUR packages (--yes mode, no prompts)"
-            if $AUR_HELPER "${aur_opts[@]}" --noconfirm "${AUR_PACKAGES[@]}" >> "$LOG_FILE" 2>&1; then
+            local aur_cmd=($AUR_HELPER)
+            if exe_spin "AUR packages (${#AUR_PACKAGES[@]})" \
+                "${aur_cmd[@]}" "${aur_opts[@]}" --noconfirm "${AUR_PACKAGES[@]}"; then
                 mark_done "aur_packages"
                 print_ok "AUR packages installed"
             else
@@ -160,7 +162,7 @@ _optional_entries() {
         | sed -E 's/[[:space:]]+$//'
 }
 
-# 逐项询问是否安装；被选中的条目写入 stdout（一行一个）
+# fzf 多选；被选中的条目写入 stdout（一行一个），提示信息一律走 stderr
 _optional_select() {
     local entries
     if ! entries=$(_optional_entries); then
@@ -178,53 +180,44 @@ _optional_select() {
 
     echo "" >&2
     echo -e "   ${WHITE}可选软件${NC} ${DIM}(清单共 ${count} 项)${NC}" >&2
-    echo -e "   ${DIM}逐项确认：y = 安装 ｜ n 或回车 = 跳过 ｜ 全部完成后自动继续${NC}" >&2
+    echo -e "   ${DIM}Tab / Shift-Tab 多选 ｜ Enter 确认 ｜ Esc 全部跳过 ｜ 空确认 = 全不装${NC}" >&2
 
-    # 交互输入走 fd9：终端可用时读 /dev/tty，否则读 stdin 的副本，
-    # 避免与下面的 while read 抢同一路输入。
-    local tty_ok=false input_file=""
-    _tty_ok && tty_ok=true
-    if ! $tty_ok; then
-        input_file=$(mktemp)
-        cat > "$input_file"
-        exec 9< "$input_file"
+    if ! command -v fzf >/dev/null 2>&1; then
+        print_warn "未找到 fzf，跳过可选软件（需要全装可改用 --yes）"
+        return 1
     fi
 
-    local line name desc idx=0 picked=0 answer
-    while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
-        idx=$((idx + 1))
-        name=$(printf '%s' "$line" | cut -f1 | xargs)
-        desc=$(printf '%s' "$line" | cut -f2 | sed 's/^#[[:space:]]*//')
-        [[ -z "$name" ]] && continue
-
-        echo "" >&2
-        printf "   ${DIM}[%2d/%d]${NC} %-38s ${DIM}%s${NC}\n" \
-            "$idx" "$count" "$name" "$desc" >&2
-        printf "   ${YELLOW}[?]${NC} 安装 %s？[y/N]: " "${name}" >&2
-
-        answer=""
-        if $tty_ok; then
-            read -r answer < /dev/tty || break
-        else
-            read -r -u 9 answer || break
-        fi
-
-        case "$answer" in
-            [yY]*)
-                printf '%s\n' "$line"
-                picked=$((picked + 1))
-                ;;
-        esac
-    done <<< "$entries"
-
-    if ! $tty_ok; then
-        exec 9<&-
-        rm -f "$input_file"
+    if ! _tty_ok; then
+        print_warn "当前没有可用终端，跳过可选软件（无人值守请用 --yes）"
+        return 1
     fi
+
+    # fzf 的列表从 stdin 管道读，界面自动挂到 /dev/tty，故不加 < /dev/tty
+    local selected
+    selected=$(printf '%s\n' "$entries" | fzf \
+        --multi \
+        --layout=reverse \
+        --height=90% \
+        --border \
+        --no-info \
+        --delimiter='\t' \
+        --with-nth=1,2 \
+        --pointer='▶' \
+        --marker='✓' \
+        --header="选择要安装的软件（Tab 多选，Enter 确认）" \
+        --prompt="可选软件 > " 2>/dev/tty)
 
     echo "" >&2
+    if [[ -z "$selected" ]]; then
+        print_info "未选择任何软件" >&2
+        return 0
+    fi
+
+    local picked
+    picked=$(printf '%s\n' "$selected" | wc -l)
     print_info "已选 $picked 项" >&2
+
+    printf '%s\n' "$selected"
     return 0
 }
 
@@ -258,9 +251,9 @@ _optional_install() {
         echo -e "   ${CYAN}>>> 仓库包${NC} ${DIM}(${#OPT_REPO[@]} 个)${NC}"
         echo -e "       ${DIM}${OPT_REPO[*]}${NC}"
 
-        if $AUR_HELPER -S --needed --noconfirm "${OPT_REPO[@]}" >> "$LOG_FILE" 2>&1; then
-            print_ok "仓库包安装完成"
-        else
+        local repo_cmd=($AUR_HELPER)
+        if ! exe_spin "仓库包 (${#OPT_REPO[@]})" \
+            "${repo_cmd[@]}" -S --needed --noconfirm "${OPT_REPO[@]}"; then
             print_warn "部分仓库包安装失败（见日志）"
             failed=$((failed + 1))
         fi
@@ -282,7 +275,12 @@ _optional_install() {
             fi
 
             local aur_rc=0
-            if _tty_ok; then
+            local aur_cmd=($AUR_HELPER)
+            if [[ "${ASSUME_YES:-false}" == "true" ]]; then
+                # 无人值守：输出进日志，终端只看转圈
+                exe_spin "AUR 包 (${#OPT_AUR[@]})" \
+                    "${aur_cmd[@]}" "${aur_opts[@]}" --noconfirm "${OPT_AUR[@]}" || aur_rc=$?
+            elif _tty_ok; then
                 $AUR_HELPER "${aur_opts[@]}" "${OPT_AUR[@]}" < /dev/tty || aur_rc=$?
             else
                 $AUR_HELPER "${aur_opts[@]}" "${OPT_AUR[@]}" || aur_rc=$?

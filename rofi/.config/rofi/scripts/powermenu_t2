@@ -1,1 +1,4 @@
-../powermenu/type-2/powermenu.sh
+#!/bin/sh
+# 快捷入口：先定位脚本自身目录，再用相对路径执行对应主题的电源菜单（不依赖调用者的 cwd）
+cd "$(dirname "$0")" || exit 1
+exec ./../powermenu/type-2/powermenu.sh "$@"

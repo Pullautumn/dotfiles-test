@@ -124,7 +124,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 3 | `clone_dotfiles` | 本地运行时直接用当前目录，否则克隆到 `~/.dotfiles` |
 | Phase 4 | `install_packages` | 按 20 个包组装 90 个仓库包 |
 | Phase 4b | 同上 | 装 8 个必需 AUR 包 |
-| Phase 4c | `install_optional_packages` | 读 `common-applist.txt`，逐项询问后按 repo / AUR / flatpak 分类安装 |
+| Phase 4c | `install_optional_packages` | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装 |
 | Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接 → 脚本权限 → 路径替换 → flatpak 主题放行 |
 | Phase 6a | `setup_nvim` | 装 Neovim，`Lazy! sync` 拉齐插件，可选装 LSP 依赖 |
 | Phase 6b | `setup_zsh` | 装 Zsh，可选 `chsh` 改默认 shell |
@@ -262,7 +262,7 @@ sudo systemctl enable ly@tty1     # 用 ly 作为登录入口
 清单维护在两个地方，改这两个文件就够，不用动脚本：
 
 - 必需软件 → `setup/lib/config.sh` 的 `PKG_GROUPS` / `AUR_PACKAGES`
-- 可选软件 → `setup/common-applist.txt`（装到 Phase 4c 时逐项询问）
+- 可选软件 → `setup/common-applist.txt`（装到 Phase 4c 时 fzf 勾选）
 
 ### 必需软件
 
@@ -314,7 +314,7 @@ sudo systemctl enable ly@tty1     # 用 ly 作为登录入口
 
 ### 可选软件
 
-安装到 Phase 4c 时逐项询问，输入 `y` 装、回车或 `n` 跳过。共 28 项：
+安装到 Phase 4c 时会弹出 fzf 列表：`Tab` / `Shift-Tab` 多选、`Enter` 确认、`Esc` 全部跳过。共 28 项：
 
 | 分类 | 软件 |
 |---|---|
@@ -421,9 +421,9 @@ waypaper                                    # 选张壁纸，会自动触发
 matugen image ~/Pictures/Wallpapers/xxx.jpg
 ```
 
-**可选软件逐项询问时没回答就过去了**
+**可选软件勾选时按了 Esc 或直接回车**
 
-输入流中断时会停止询问、已选中的照常安装。重跑安装器即可（已完成阶段会跳过，只重新问可选软件与 4b）。
+视为一项都不装，安装流程继续往下走。想重来就重跑安装器（已完成阶段会跳过，只重新弹可选软件与 4b）。若终端里找不到 fzf 或没有可用 TTY，这一阶段会打印提示并跳过，全程无人值守请直接用 `--yes`。
 
 ## 说明
 
