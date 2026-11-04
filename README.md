@@ -459,4 +459,3 @@ matugen image ~/Pictures/Wallpapers/xxx.jpg
 ## 致谢
 
 - 安装器架构：[jswysnemc/dotfiles](https://github.com/jswysnemc/dotfiles)
-- 大量 Arch 配置经验参考：[ShorinArchExperience](https://github.com/SHORiN-KiWATA/ShorinArchExperience-ArchlinuxGuide/wiki)
