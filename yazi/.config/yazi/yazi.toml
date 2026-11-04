@@ -2,15 +2,11 @@
 # 如果遇到问题，可以在https://github.com/yazi-rs/schemas提交issue
 # "$schema" = "https://yazi-rs.github.io/schemas/yazi.json"
 
-# 部分被注释掉了，如果取消注释可以设置目录行为
+# 文件管理器的基本行为
+# 注意：老版本的表名是 [mgr]，25.x 之后改成了 [manager]。26.x 里 [mgr] 虽然
+# 不报错，但整段会被**静默忽略**（ratio / sort_by / show_hidden 全都不生效），
+# 所以这里合并成单独一个 [manager]。
 [manager]
-# 设置回车直接进入目录
-folder_actions = ["enter"]
-# 在右键菜单中显示"在Nautilus中显示"选项
-show_reveal = true
-
-# mgr部分控制文件管理器的基本行为
-[mgr]
 # 界面分割比例，分别为左侧面板、主面板、右侧预览面板的宽度比例
 ratio = [1, 4, 3]
 # 文件排序方式："natural"(自然排序)、"alphabetical"(字母排序)、"size"(大小)、"modified"(修改时间)
@@ -212,13 +208,18 @@ image_bound = [0, 0]
 suppress_preload = false
 
 # git状态插件必备的配置
+# 26.x 的 Fetcher 结构体多了一个必填字段 group（缺了会直接报
+# "missing field `group`" 并让整个 yazi.toml 失效）。老版本用的是 id，
+# 两个都写上：新版读 group，老版读 id，反正未知字段会被忽略。
 [[plugin.prepend_fetchers]]
 id = "git"
+group = "git"
 url = "*"
 run = "git"
 
 [[plugin.prepend_fetchers]]
 id = "git"
+group = "git"
 url = "*/"
 run = "git"
 

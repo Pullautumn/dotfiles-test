@@ -6,7 +6,6 @@
 
 CUSTOM_DIR="$HOME/.config/matugen/custom"
 
-# [1] 配置文件还原列表
 RESTORE_LIST=(
     "btop/catppuccin_mocha.theme"
     "fastfetch/config.jsonc"

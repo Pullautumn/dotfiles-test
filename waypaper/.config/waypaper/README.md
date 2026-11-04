@@ -69,6 +69,7 @@ matugen image ~/Pictures/Wallpapers/xxx.jpg
 ## 注意
 
 - `folder` 是 `~/Pictures/Wallpapers`，这个目录在安装时被链到仓库的 `wallpaper/Pictures/Wallpapers`。如果手动 `rm` 了它，waypaper 会打开一个空目录。
+- `stylesheet = /home/shorin/.config/waypaper/style.css` 是配置里**残留的第三方路径**，安装器部署时会自动替换成你的家目录；手动部署要自己改，否则 waypaper 界面样式不生效（不影响功能）。
 - 仓库里 `wallpaper/` 有 9 张图，`wallpapers/` 有 20 张（含模糊版本），后者不部署、不参与壁纸选择。
 - 多显示器想各用各的：`monitors` 改成具体输出名（`niri msg outputs` 查看），再对每个屏单独设置。
 - `backend` 写的是 `awww`，对应 `awww-daemon` 必须已经在跑；`autostart.kdl` 里已经启动了两个实例（普通 + overview）。
