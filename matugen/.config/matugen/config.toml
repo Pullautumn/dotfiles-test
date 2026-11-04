@@ -74,6 +74,16 @@ post_hook = 'pkill swayosd && swayosd-server &'
 input_path = '~/.config/matugen/templates/colors.css'
 output_path = '~/.config/waybar-niri-Win11Like/colors.css'
 
+# 备选状态栏 waybar-quickshell（变量名与上一条不同，单独一份模板）
+[templates.waybar-quickshell]
+input_path = '~/.config/matugen/templates/waybar-quickshell-colors.css'
+output_path = '~/.config/waybar-quickshell/colors.css'
+
+# Quickshell 全组件主题。直接写进包目录（该文件已在 .gitignore 里）
+[templates.quickshell]
+input_path = '~/.config/matugen/templates/quickshell-theme.js'
+output_path = '~/.config/quickshell/Commons/Theme.js'
+
 [templates.yazi]
 input_path = '~/.config/matugen/templates/yazi-theme.toml'
 output_path = '~/.config/yazi/theme.toml'

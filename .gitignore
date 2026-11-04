@@ -7,6 +7,8 @@ config_backup_*.tar.gz
 # 依赖目录
 node_modules/
 __pycache__/
+# Quickshell 的 uv 虚拟环境（cd ~/.config/quickshell && uv sync 生成）
+quickshell/.config/quickshell/.venv
 # 系统隐藏文件
 .DS_Store
 .idea/
@@ -44,9 +46,19 @@ wallpaper/Pictures/Wallpapers/cache-niri-auto-blur-bg
 wallpaper/Pictures/Wallpapers/cache-niri-overview-blur-dark
 wallpaper/Pictures/Wallpapers/wallpapers
 waybar-niri-Win11Like/.config/waybar-niri-Win11Like/colors.css
+waybar-quickshell/.config/waybar-quickshell/colors.css
+quickshell/.config/quickshell/Commons/Theme.js
+# 组件目录里由 qs-popup / 安装器自动生成的副本：
+# QML 的 JS 脚本导入不能用 ../，每个组件目录都要有自己的一份 ./Theme.js
+quickshell/.config/quickshell/*/Theme.js
+quickshell/.config/quickshell/*/ScreenModel.js
+# Commons/ScreenModel.js 是源文件（不是生成物），必须提交
+!quickshell/.config/quickshell/Commons/ScreenModel.js
 yazi/.config/yazi/theme.toml
 gtk-3.0/.config/gtk-3.0/colors.css
 gtk-3.0/.config/gtk-3.0/gtk.css
+# GTK 书签由 setup 按当前 $HOME 生成（内容因人而异，不能提交）
+gtk-3.0/.config/gtk-3.0/bookmarks
 local-share-applications/.local/share/applications/mimeapps.list
 local-share-applications/.local/share/applications/mimeinfo.cache
 obs-studio/.config/obs-studio/logs/2026-03-27 14-56-03.txt

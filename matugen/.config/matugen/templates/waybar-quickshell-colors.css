@@ -1,0 +1,38 @@
+/* ==============================================================================
+ * Matugen 颜色定义 —— waybar-quickshell
+ * 对应 ~/.config/waybar-quickshell/style.css 里的 15 个 @ 变量
+ * 与主 waybar(colors.css) 的变量名不同，不能共用同一个模板
+ * ============================================================================== */
+
+/* --- 核心背景 --- */
+/* 基础背景：Surface Container + 85% 不透明 */
+@define-color base-bg alpha({{colors.surface_container.default.hex}}, 0.85);
+
+/* Tooltip 背景：稍不透明 (90%) */
+@define-color tooltip-bg alpha({{colors.surface.default.hex}}, 0.9);
+
+/* 悬停背景：主色 12%，带色调倾向而非变灰 */
+@define-color hover-bg alpha({{colors.primary.default.hex}}, 0.12);
+
+/* 通用半透明白 (原 rgba(255,255,255,0.2)) */
+@define-color white-20 alpha({{colors.on_surface.default.hex}}, 0.2);
+
+
+/* --- 核心文字 --- */
+@define-color text-main {{colors.on_surface.default.hex}};
+@define-color text-sub {{colors.on_surface_variant.default.hex}};
+/* 停播/禁用态文字 */
+@define-color text-dim {{colors.outline.default.hex}};
+
+/* 反色文字 (显示在主色背景上) */
+@define-color text-on-primary {{colors.on_primary.default.hex}};
+
+
+/* --- 语义色映射 --- */
+@define-color highlight {{colors.primary.default.hex}};       /* 主色 (跟随壁纸) */
+@define-color secondary {{colors.secondary.default.hex}};     /* 次要色 (跟随壁纸) */
+@define-color accent-red {{colors.error.default.hex}};        /* 错误/红色 */
+@define-color accent-green #00695c;                           /* 正常/在线 (固定 Teal) */
+@define-color accent-orange #ef6c00;                          /* 警告 (固定 Material Orange 800) */
+@define-color accent-yellow #f9a825;                         /* 暂停 (固定 Material Yellow 800) */
+@define-color accent-purple {{colors.tertiary.default.hex}};  /* 特殊/第三装饰色 */

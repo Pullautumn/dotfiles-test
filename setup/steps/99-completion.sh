@@ -24,6 +24,10 @@ show_completion() {
 
     echo -e "   ${CYAN}${step}.${NC} 换壁纸：     ${YELLOW}waypaper${NC} ${DIM}(自动触发 matugen 换色)${NC}"
     step=$((step + 1))
+    if [[ -d "$HOME/.config/waybar-quickshell" ]]; then
+        echo -e "   ${CYAN}${step}.${NC} 状态栏样式： ${YELLOW}Mod+F2 / F3 / F4${NC} ${DIM}(主样式 / Win11Like / Quickshell)${NC}"
+        step=$((step + 1))
+    fi
     echo -e "   ${CYAN}${step}.${NC} 输入法设置： ${YELLOW}fcitx5-configtool${NC}"
     step=$((step + 1))
     echo -e "   ${CYAN}${step}.${NC} 显示器配置： ${YELLOW}~/.config/niri/conf.d/output.kdl${NC}"

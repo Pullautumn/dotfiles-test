@@ -18,7 +18,7 @@ setup/
   steps/
     01-preflight.sh     系统检查、基础工具、paru、定位仓库
     02-packages.sh      必需软件分组安装、AUR、可选软件 fzf 勾选（装包带转圈进度）
-    03-dotfiles.sh      备份旧配置、stow 部署、壁纸链接、路径替换
+    03-dotfiles.sh      备份旧配置、stow 部署、壁纸链接、GTK 书签生成
     04-apps.sh          nvim / zsh / mpv / yazi
     05-system.sh        locale、PATH、PAM、matugen、系统服务、ly、用户目录
     99-completion.sh    完成提示与重启
@@ -46,6 +46,7 @@ setup/
 | `setup_bash_path` | 05 | 把 `~/.local/bin` 加进 PATH |
 | `setup_local_bin` | 05 | 本地脚本可执行权限 |
 | `setup_gtklock_pam` | 05 | 创建 `/etc/pam.d/gtklock` |
+| `setup_quickshell` | 05 | 兜底 `Theme.js`、`uv sync`、注册 `qs-notifications.service` |
 | `setup_matugen` | 05 | 用当前壁纸生成 Material You 配色 |
 | `setup_desktop_tweaks` | 05 | 默认终端、窗口按钮、i2c 权限 |
 | `enable_services` | 05 | NetworkManager / bluetooth / swayosd |
@@ -85,8 +86,11 @@ bash install.sh --reset         # 清空进度，重新开始
 
 - **mimeapps** 用绝对路径链接，因为桌面环境会直接写这个文件，避免写穿 stow 链接。
 - **wallpaper/** 不走 stow，单独链接到 `~/Pictures/Wallpapers`。
-- **路径替换**：配置里硬编码了 `/home/pullautumn`，部署时会替换成当前用户的家目录；
-  同时会修掉 waypaper 里残留的 `/home/shorin`。当前用户就是 pullautumn 时自动跳过。
+- **家目录路径**：配置里能自解析的都写成了 `~` / `$HOME` / `vim.fn.expand`，不再做批量替换。
+  仅 GTK 书签由 `_dotfiles_generate_bookmarks` 按 `$HOME` 现生成；niri 的 `screenshot-path`
+  只打印提示让用户手动改。
+  > 早先版本用 `sed` 替换 `readlink -f` 解析出的文件，那实际是在改仓库（stow 会把
+  > `~/.config/*` 折叠成指向仓库的软链），会把 `~/dotfiles` 改写成别人的用户名，已移除。
 - **备份**：`~/.config/*` 下的同名配置会先移到 `~/.config-backup-<时间戳>`。
 - **waybar-niri-Win11Like** 部署到独立目录 `~/.config/waybar-niri-Win11Like`，与主 waybar 不冲突；
   和主配置一起部署，用 `Mod+F2` / `Mod+F3` 切换两套样式。

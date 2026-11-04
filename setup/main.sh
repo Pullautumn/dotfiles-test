@@ -119,6 +119,7 @@ main() {
     setup_bash_path
     setup_local_bin
     setup_gtklock_pam
+    setup_quickshell
     setup_matugen
     setup_desktop_tweaks
     enable_services

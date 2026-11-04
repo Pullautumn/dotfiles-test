@@ -1,0 +1,21 @@
+[Unit]
+Description=QuickShell Notification Daemon (waybar-quickshell 样式的通知后端)
+# 注意：本单元不要 enable。
+# 它和 swaync 抢 D-Bus 上唯一的 org.freedesktop.Notifications，
+# 由 ~/.config/scripts/switch-waybar.sh 在切到 quickshell 样式时启动、
+# 切走时停止，开机自启的永远是 swaync。
+After=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.config/quickshell
+Environment=QS_NOTIFICATIONS_LOG=%t/qs-notifications.log
+# 首次运行前需要一次 uv sync（安装器 setup_quickshell 阶段已做）
+ExecStart=/usr/bin/uv run python -u notifications/main.py
+Restart=on-failure
+RestartSec=2
+# 被 switch-waybar.sh stop 时不要判为失败
+SuccessExitStatus=143
+
+[Install]
+WantedBy=default.target

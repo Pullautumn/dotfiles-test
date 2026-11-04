@@ -17,7 +17,7 @@ NC='\033[0m'
 # ==============================================================================
 # Configuration
 # ==============================================================================
-DOTFILES_REPO="https://github.com/Pullautumn/dotfiles-test"
+DOTFILES_REPO="https://github.com/Pullautumn/dotfiles"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/pullautumn"
 mkdir -p "$LOG_DIR"
@@ -35,7 +35,11 @@ AUR_HELPER=""
 TARGET_USER="$(id -un)"
 TARGET_HOME="$HOME"
 
-# 配置里硬编码的旧用户名/家目录，部署时会被替换为实际值
+# 配置作者的用户名/家目录，仅供参考。
+# 安装器**不再**拿它做全仓库批量替换（那会把 ~/.dotfiles 改写成别人的用户名）。
+# 现在配置里能自解析的都已改成 ~ / $HOME / vim.fn.expand；剩余例外：
+#   · GTK 书签 → 安装时按 $HOME 重新生成（见 03-dotfiles.sh: _dotfiles_generate_bookmarks）
+#   · niri 的 screenshot-path → 只提示，不代改
 LEGACY_USER="pullautumn"
 LEGACY_HOME="/home/pullautumn"
 
@@ -46,10 +50,13 @@ LEGACY_HOME="/home/pullautumn"
 #   setup/      安装器本体
 #   wallpaper/  壁纸，单独链接到 ~/Pictures/Wallpapers
 #   wallpapers/ 头像等杂项资源，不部署
-# waybar-niri-Win11Like 是备选状态栏样式，部署到 ~/.config/waybar-niri-Win11Like，
-# 与主 waybar 各自独立，用 Mod+F2 / Mod+F3 随时切换。
+# waybar-quickshell 是备选状态栏样式，部署到 ~/.config/waybar-quickshell，
+# 与主 waybar 各自独立，用 Mod+F2 / Mod+F3 / Mod+F4 随时切换。
+# 它依赖 quickshell 包（弹窗/面板全在 ~/.config/quickshell 里），两者要一起装。
 STOW_PACKAGES=(
-    niri waybar waybar-niri-Win11Like
+    niri waybar waybar-niri-Win11Like waybar-quickshell
+    quickshell
+    systemd
     fuzzel rofi wlogout
     mako swaync gtklock swaylock
     kitty starship zsh zshenv
@@ -83,7 +90,7 @@ PKG_GROUPS[network]="networkmanager network-manager-applet nm-connection-editor 
 PKG_GROUPS[cli]="ripgrep fd bat eza jq curl wget unzip bc duf fastfetch prettyping pacman-contrib unarchiver lazygit lazydocker btop"
 PKG_GROUPS[fonts]="noto-fonts-cjk ttf-jetbrains-mono-nerd ttf-cascadia-code-nerd"
 PKG_GROUPS[dev]="python python-pip nodejs npm"
-PKG_GROUPS[media]="mpv yazi"
+PKG_GROUPS[media]="mpv yazi cava"
 PKG_GROUPS[power]="brightnessctl wlsunset"
 PKG_GROUPS[browser]="google-chrome firefox"
 
@@ -123,6 +130,11 @@ AUR_PACKAGES=(
     ttf-lxgw-wenkai-screen
     niri-sidebar-git
     wl-screenrec-git
+    # waybar-quickshell 样式的后端：quickshell 本体 + Python 依赖管理器
+    quickshell
+    uv
+    # zsh 语法高亮，由 zsh-vi-mode 的 zvm_after_init 钩子调用（见 zsh/plugins.zsh）
+    zsh-patina
 )
 
 # ==============================================================================

@@ -9,7 +9,7 @@
 | 类别 | 条目 |
 |---|---|
 | 中文应用 | `com.qq.weixin.desktop` 微信、`qq.desktop` QQ、`wemeetapp.desktop` 腾讯会议、`wps-office-*.desktop` WPS 文字 / 表格 / 演示 / PDF |
-| 开发工具 | `idea.desktop` `pycharm.desktop` `webstorm.desktop` `phpstorm.desktop`、`apifox.desktop`、`charles.desktop`、`cherry-studio.desktop`、`Navicat.Premium.17.desktop`、`install4j_1egslpi-BurpSuitePro.desktop` |
+| 开发工具 | `idea.desktop` `pycharm.desktop` `webstorm.desktop` `phpstorm.desktop`、`apifox.desktop`、`charles.desktop`、`cherry-studio.desktop` |
 | 网络工具 | `clash-verge-handler.desktop`、`cherrystudio-url-handler.desktop`、`firefox.desktop` |
 | 系统 | `org.flameshot.Flameshot.desktop` 截图、`org.gnome.Shell.Extensions.GSConnect*.desktop` 手机互联、`file-converter.desktop` |
 

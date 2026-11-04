@@ -40,6 +40,9 @@ Arch Linux + [niri](https://github.com/YaLTeR/niri) 的个人配置，整套用 
 | **niri** | 合成器配置、按键绑定、`conf.d/` 分片、`scripts/` | `~/.config/niri` | [README](niri/.config/niri/README.md) |
 | **waybar** | 状态栏样式与模块脚本 | `~/.config/waybar` | [README](waybar/.config/waybar/README.md) |
 | **waybar-niri-Win11Like** | 备选 Win11 风格状态栏，独立目录不冲突，默认随主配置一起部署，`Mod+F3` 切换 | `~/.config/waybar-niri-Win11Like` | [README](waybar-niri-Win11Like/.config/waybar-niri-Win11Like/README.md) |
+| **waybar-quickshell** | 备选 Quickshell 风格状态栏，`Mod+F4` 切换；弹窗/面板由下面的 quickshell 提供 | `~/.config/waybar-quickshell` | [README](waybar-quickshell/.config/waybar-quickshell/README.md) |
+| **quickshell** | Quickshell 组件集合（通知中心、启动器、剪贴板、快捷设置等），`waybar-quickshell` 的后端 | `~/.config/quickshell` | [README](quickshell/.config/quickshell/README.md) |
+| **systemd** | 用户级服务单元（`qs-notifications.service`，不 enable，由切换脚本启停） | `~/.config/systemd/user` | — |
 | **swaync** | 通知中心（默认方案） | `~/.config/swaync` | [README](swaync/.config/swaync/README.md) |
 | **mako** | 轻量通知守护（备用方案） | `~/.config/mako` | [README](mako/.config/mako/README.md) |
 | **fuzzel** | 应用启动器 | `~/.config/fuzzel` | [README](fuzzel/.config/fuzzel/README.md) |
@@ -125,7 +128,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 4 | `install_packages` | 按 20 个包组装 90 个仓库包 |
 | Phase 4b | 同上 | 装 7 个必需 AUR 包（逐包显示进度，不询问） |
 | Phase 4c | `install_optional_packages` | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装 |
-| Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接 → 脚本权限 → 路径替换 → flatpak 主题放行 |
+| Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接 → 脚本权限 → 生成 GTK 书签 → flatpak 主题放行 |
 | Phase 6a | `setup_nvim` | 装 Neovim，`Lazy! sync` 拉齐插件，可选装 LSP 依赖 |
 | Phase 6b | `setup_zsh` | 装 Zsh，可选 `chsh` 改默认 shell |
 | Phase 6c | `setup_mpv` | 装 MPV，可选下载 Anime4K 着色器 |
@@ -134,6 +137,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 7b | `setup_bash_path` | 把 `~/.local/bin` 加进 PATH |
 | Phase 7c | `setup_local_bin` | 给 `~/.local/bin` 与各 `scripts/` 里的脚本加执行权限 |
 | Phase 7d | `setup_gtklock_pam` | 创建 `/etc/pam.d/gtklock`，否则锁屏无法验证密码 |
+| Phase 7e | `setup_quickshell` | 兜底 `Theme.js`、`uv sync` 装 Quickshell 依赖、注册（不启用）`qs-notifications.service` |
 | Phase 8 | `setup_matugen` | 用当前壁纸生成一次 Material You 配色 |
 | Phase 8b | `setup_desktop_tweaks` | 默认终端、窗口按钮、i2c 权限等桌面细节 |
 | Phase 9 | `enable_services` | 启用 NetworkManager、蓝牙、swayosd |
@@ -217,7 +221,8 @@ paru -S --needed \
 
 ```bash
 cd ~/dotfiles
-stow -d ~/dotfiles -t ~ -R niri waybar fuzzel rofi wlogout mako swaync \
+stow -d ~/dotfiles -t ~ -R niri waybar waybar-niri-Win11Like waybar-quickshell \
+    quickshell systemd fuzzel rofi wlogout mako swaync \
     gtklock swaylock kitty starship zsh zshenv nvim yazi mpv obs-studio \
     Thunar btop fastfetch fcitx5 fontconfig environment.d gtk-3.0 \
     matugen scripts local-bin waypaper xdg-desktop-portal satty \
@@ -233,19 +238,39 @@ ln -sfn ~/dotfiles/mimeapps/.config/mimeapps.list ~/.config/mimeapps.list
 mkdir -p ~/Pictures
 ln -sfn ~/dotfiles/wallpaper/Pictures/Wallpapers ~/Pictures/Wallpapers
 find -L ~/.local/bin ~/.config/scripts ~/.config/niri/scripts \
-     ~/.config/waybar/scripts ~/.config/matugen/scripts \
+     ~/.config/waybar/scripts ~/.config/waybar-quickshell/scripts \
+     ~/.config/matugen/scripts \
      -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} +
+# 无后缀脚本（qs-popup、cliphist-fuzzel-img 等）
+find -L ~/.local/bin ~/.config/waybar/scripts \
+     -maxdepth 1 -type f ! -name "*.*" -exec chmod +x {} +
 ```
 
-**⑥ 路径替换（用别的用户名时）**
-
-配置里硬编码了 `/home/pullautumn`，不是这个用户名就替换：
+**⑤b Quickshell 的 Python 依赖（用 `Mod+F4` 才需要）**
 
 ```bash
-grep -rl "/home/pullautumn" ~/.config ~/.local 2>/dev/null | while read -r f; do
-    sed -i "s|/home/pullautumn|$HOME|g; s|/home/shorin|$HOME|g" "$f"
-done
+cd ~/.config/quickshell && uv sync
+systemctl --user daemon-reload
 ```
+
+**⑥ 家目录路径（基本不用管了）**
+
+配置里能自解析的都已改成 `~` / `$HOME` / `vim.fn.expand`，不再需要批量替换用户名。
+只剩两处例外：
+
+1. **GTK 书签** `~/.config/gtk-3.0/bookmarks` —— GTK 只认绝对 `file://` URI，不支持 `~`。
+   仓库里不再放这个文件，安装器会按当前 `$HOME` 现生成；手动装不生成也行，GTK 会自己写一份默认的。
+2. **niri 截图路径** —— `~/.config/niri/conf.d/environment.kdl` 的 `screenshot-path`
+   只接受绝对路径，装完自己改一下：
+
+```bash
+sed -i "s|/home/pullautumn|$HOME|g" ~/.config/niri/conf.d/environment.kdl
+mkdir -p ~/Pictures/Screenshots
+```
+
+> ⚠️ 别再对整个 `~/.config` 跑 `sed -i`。stow 会把多数包目录折叠成指向 `~/dotfiles`
+> 的软链，改 `~/.config` 下的文件等于直接改写仓库 —— `git status` 会变脏，
+> `git pull` 会冲突，`pullautumn-screenrec` 这类标识符也会被一起改掉。
 
 **⑦ 系统服务与登录**
 
@@ -425,9 +450,10 @@ matugen image ~/Pictures/Wallpapers/xxx.jpg
 ## 说明
 
 - **必需软件**写在 `setup/lib/config.sh`，可选软件写在 `setup/common-applist.txt`，`setup/niri-applist.txt` 是整理时的原始参考清单，安装器不读取。
-- **路径替换**：配置里硬编码了 `/home/pullautumn`，装到其他用户名时安装器会自动替换成实际家目录（同时修掉 `waypaper` 里残留的 `/home/shorin`）。
+- **家目录路径**：能自解析的配置都已写成 `~` / `$HOME` / `vim.fn.expand`，装到任何用户名下都成立。只有 GTK 书签（必须绝对 `file://` URI）由安装器按 `$HOME` 现生成，niri 的 `screenshot-path` 只提示不代改。安装器**不会**再对 `~/.config` 做批量 `sed` —— stow 会把目录折叠成软链，那样改等于直接改写仓库。
 - **备份**：部署前会把 `~/.config` 下的同名目录移到 `~/.config-backup-<时间戳>`，不会直接删除。`~/.local/bin` 这类共享目录交给 stow 合并，不整体搬走。
 - **`waybar-niri-Win11Like`** 部署到 `~/.config/waybar-niri-Win11Like`，与主 waybar 互不影响，两套样式都会装好，用 `Mod+F2`（主样式）/ `Mod+F3`（Win11 风格）随时切换。
+- **`waybar-quickshell`** 部署到 `~/.config/waybar-quickshell`，形态与上一套相同，但它的弹窗、面板、启动器、剪贴板全部由 `~/.config/quickshell` 里的 QML 组件提供。三套样式统一用 `~/.config/scripts/switch-waybar.sh` 切换（`Mod+F2`/`F3`/`F4`），切换时会连带切换通知后端：Quickshell 样式用 `qs-notifications.service`，另两套用 `swaync`。两者都要独占 D-Bus 的 `org.freedesktop.Notifications`，所以不能同时运行。剪贴板不需要切换，Quickshell 的 clipboard 组件读的就是同一个 `cliphist` 数据库。
 - **断点续跑**：进度记在 `~/.pullautumn_install_progress`，`--reset` 可清空。
 
 ## 致谢

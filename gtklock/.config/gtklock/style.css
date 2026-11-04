@@ -1,6 +1,8 @@
 /* 全局背景设置 */
+/* 用相对路径：GTK 以本文件所在目录为基准解析 url()，这样谁装都能用，
+   不再写死 /home/某个用户名。图片就在同目录的 wallpaper-blur.jpg。 */
 window {
-    background-image: url("file:///home/pullautumn/.config/gtklock/wallpaper-blur.jpg");
+    background-image: url("wallpaper-blur.jpg");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

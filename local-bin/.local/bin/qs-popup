@@ -1,0 +1,357 @@
+#!/bin/bash
+# QuickShell popup launcher for Waybar integration
+# LANG=en
+QS_CONFIG_DIR="$HOME/.config/quickshell"
+QS_POS_CONF="$QS_CONFIG_DIR/position.conf"
+
+# quickshell 的启动输出写这里。
+# 原来启动行是 >/dev/null 2>&1，组件起不来时完全看不出原因
+# （QML 报错只说 "Script qrc:/qs-blackhole unavailable"，不说是哪个文件）。
+QS_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/qs-popup.log"
+{
+    mkdir -p "$(dirname "$QS_LOG")" 2>/dev/null
+    if [[ ! -w "$(dirname "$QS_LOG")" ]]; then
+        QS_LOG=/dev/null
+    elif [[ -f "$QS_LOG" ]] && (( $(stat -c %s "$QS_LOG" 2>/dev/null || echo 0) > 262144 )); then
+        mv -f "$QS_LOG" "$QS_LOG.1" 2>/dev/null
+    fi
+} 2>/dev/null
+
+# QML 的 JS 脚本导入**不能**用 ../ —— Quickshell 会把加载失败的脚本导入整体
+# 替换成 qrc:/qs-blackhole 占位，报错只说"占位不可用"，不说是哪个文件：
+#   ERROR: caused by @shell.qml[8:1]: Script qrc:/qs-blackhole unavailable
+# 所以每个组件目录必须有自己的一份 ./Theme.js 和 ./ScreenModel.js。
+# 上游用符号链接实现；这里用实体拷贝，免得依赖软链权限（Windows 检出/容器）。
+# Theme.js 是 matugen 生成物（在 .gitignore 里），git clean -fdx 会连它一起删。
+ensure_qml_assets() {
+    local root="$QS_CONFIG_DIR"
+    local theme="$root/Commons/Theme.js"
+    local fallback="$root/Commons/Theme.js.Default"
+    local screen_model="$root/Commons/ScreenModel.js"
+    local d repaired=0
+
+    # 1) 主题源文件：缺失、或写坏（不含 function alpha）就从 Default 补
+    if [[ ! -f "$theme" ]] || ! grep -q 'function alpha' "$theme" 2>/dev/null; then
+        [[ -f "$fallback" ]] || return 1
+        cp -f "$fallback" "$theme" 2>/dev/null || return 1
+        repaired=1
+    fi
+
+    # 2) 每个组件目录各一份副本；matugen 重新生成后按 mtime 自动刷新
+    for d in "$root"/*/; do
+        [[ -f "$d/shell.qml" ]] || continue
+        if [[ ! -f "$d/Theme.js" ]] || [[ "$theme" -nt "$d/Theme.js" ]]; then
+            cp -f "$theme" "$d/Theme.js" 2>/dev/null && repaired=1
+        fi
+        if [[ -f "$screen_model" ]] \
+           && { [[ ! -f "$d/ScreenModel.js" ]] || [[ "$screen_model" -nt "$d/ScreenModel.js" ]]; }; then
+            cp -f "$screen_model" "$d/ScreenModel.js" 2>/dev/null && repaired=1
+        fi
+    done
+
+    if (( repaired )); then
+        printf '=== %s 已同步各组件目录的 Theme.js / ScreenModel.js ===\n' \
+            "$(date '+%F %T')" >>"$QS_LOG" 2>/dev/null
+    fi
+    return 0
+}
+
+COMPONENT="$1"
+if [ $# -gt 0 ]; then
+    shift
+fi
+
+show_help() {
+    echo "Usage: qs-popup <component> [options]"
+    echo ""
+    echo "Components:"
+    echo "  wifi           - WiFi and Bluetooth connection manager"
+    echo "  bluetooth      - Bluetooth connection manager"
+    echo "  notifications  - Notification center"
+    echo "  weather        - Weather widget"
+    echo "  calendar       - Calendar widget"
+    echo "  world-clock    - World clock route in calendar widget"
+    echo "  timer          - Timer route in calendar widget"
+    echo "  media          - Media player controls"
+    echo "  quick-settings - Volume, brightness, display settings"
+    echo "  screen-recorder - Screen recording control panel"
+    echo "  screenshot-toolbox - Screenshot toolbox"
+    echo "  launcher       - Application launcher"
+    echo "  clipboard      - Clipboard manager"
+    echo "  wallpaper      - Wallpaper selector"
+    echo "  close-confirm  - Close window confirmation"
+    echo "  window-switcher - Window switcher with fzf-style filter"
+    echo "  task-manager   - Process monitor and task manager"
+    echo "  todo           - Todo list"
+    echo "  control-center - Unified control center"
+    echo ""
+    echo "Other:"
+    echo "  logs [n]       - Show last n lines of ~/.cache/qs-popup.log (default 80)"
+    echo ""
+    echo "Options:"
+    echo "  --pos <position>   Position (see below)"
+    echo "  --margin <value>   Margin value(s)"
+    echo "  --output <name>    Target output name; defaults to Waybar output or niri focused output"
+    echo ""
+    echo "Positions & Margins:"
+    echo "  top-left,T,L       top-center,T       top-right,T,R"
+    echo "  center-left,L      center             center-right,R"
+    echo "  bottom-left,B,L    bottom-center,B    bottom-right,B,R"
+    echo ""
+    echo "Examples:"
+    echo "  wifi=top-right,8,10      # top=8, right=10"
+    echo "  calendar=top-center,50   # top=50"
+    echo "  media=center             # no margin needed"
+}
+
+default_output() {
+    if [[ -n "${WAYBAR_OUTPUT_NAME:-}" ]]; then
+        printf '%s\n' "$WAYBAR_OUTPUT_NAME"
+        return
+    fi
+
+    if command -v niri >/dev/null 2>&1; then
+        niri msg --json focused-output 2>/dev/null | sed -n 's/.*"name":"\([^"]*\)".*/\1/p'
+    fi
+}
+
+target_window_json() {
+    if command -v niri >/dev/null 2>&1; then
+        niri msg --json focused-window 2>/dev/null | tr -d '\n'
+    fi
+}
+
+# Apply margins based on position
+# Args: position, margin1, [margin2]
+apply_margins() {
+    local pos="$1"
+    local m1="${2:-8}"
+    local m2="${3:-$m1}"
+
+    QS_MARGIN_T="0"
+    QS_MARGIN_R="0"
+    QS_MARGIN_B="0"
+    QS_MARGIN_L="0"
+
+    case "$pos" in
+        top-left)
+            QS_MARGIN_T="$m1"
+            QS_MARGIN_L="$m2"
+            ;;
+        top-center)
+            QS_MARGIN_T="$m1"
+            ;;
+        top-right)
+            QS_MARGIN_T="$m1"
+            QS_MARGIN_R="$m2"
+            ;;
+        center-left)
+            QS_MARGIN_L="$m1"
+            ;;
+        center)
+            # No margins needed
+            ;;
+        center-right)
+            QS_MARGIN_R="$m1"
+            ;;
+        bottom-left)
+            QS_MARGIN_B="$m1"
+            QS_MARGIN_L="$m2"
+            ;;
+        bottom-center)
+            QS_MARGIN_B="$m1"
+            ;;
+        bottom-right)
+            QS_MARGIN_B="$m1"
+            QS_MARGIN_R="$m2"
+            ;;
+    esac
+}
+
+# Read position from config file
+read_config() {
+    local name="$1"
+    QS_POS="top-right"
+
+    if [[ -f "$QS_POS_CONF" ]]; then
+        local line
+        line=$(grep "^${name}=" "$QS_POS_CONF" 2>/dev/null | head -1)
+        if [[ -n "$line" ]]; then
+            local value="${line#*=}"
+            IFS=',' read -ra parts <<< "$value"
+            [[ -n "${parts[0]}" ]] && QS_POS="${parts[0]}"
+            apply_margins "$QS_POS" "${parts[1]}" "${parts[2]}"
+        else
+            apply_margins "$QS_POS" "8"
+        fi
+    else
+        apply_margins "$QS_POS" "8"
+    fi
+}
+
+# Parse command line arguments (override config)
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --pos)
+                QS_POS="$2"
+                shift 2
+                ;;
+            --margin)
+                local margin="$2"
+                IFS=',' read -ra m <<< "$margin"
+                apply_margins "$QS_POS" "${m[0]}" "${m[1]}"
+                shift 2
+                ;;
+            --output|--screen)
+                QS_TARGET_OUTPUT="$2"
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+}
+
+component_pids() {
+    local shell_path="$1"
+    local real_shell_path
+    real_shell_path="$(realpath "$shell_path" 2>/dev/null || printf '%s' "$shell_path")"
+
+    pgrep -x quickshell -a 2>/dev/null | awk -v path="$shell_path" -v real_path="$real_shell_path" '
+        index($0, path) || index($0, real_path) { print $1 }
+    '
+}
+
+toggle_popup() {
+    local name="$1"
+    local calendar_route="${2:-}"
+    local shell_path="$QS_CONFIG_DIR/$name/shell.qml"
+    local pids
+
+    pids="$(component_pids "$shell_path")"
+    if [[ -n "$pids" ]]; then
+        kill $pids 2>/dev/null || true
+    else
+        if [[ -f "$shell_path" ]]; then
+            read_config "$name"
+            QS_TARGET_OUTPUT="$(default_output)"
+            QS_TARGET_WINDOW_JSON=""
+            if [[ "$name" == "close-confirm" ]]; then
+                QS_TARGET_WINDOW_JSON="$(target_window_json)"
+            fi
+            parse_args $ARGS
+
+            # 组件目录缺 ./Theme.js / ./ScreenModel.js 时 quickshell 会整片加载失败
+            ensure_qml_assets || printf '=== %s 警告: %s 与 .Default 都不存在，组件可能加载失败 ===\n' \
+                "$(date '+%F %T')" "$QS_CONFIG_DIR/Commons/Theme.js" >>"$QS_LOG" 2>/dev/null
+
+            printf '=== %s 启动 %s (pos=%s output=%s) ===\n' \
+                "$(date '+%F %T')" "$name" "$QS_POS" "$QS_TARGET_OUTPUT" >>"$QS_LOG" 2>/dev/null
+
+            QS_POS="$QS_POS" \
+            QS_MARGIN_T="$QS_MARGIN_T" \
+            QS_MARGIN_R="$QS_MARGIN_R" \
+            QS_MARGIN_B="$QS_MARGIN_B" \
+            QS_MARGIN_L="$QS_MARGIN_L" \
+            QS_TARGET_OUTPUT="$QS_TARGET_OUTPUT" \
+            QS_TARGET_WINDOW_JSON="$QS_TARGET_WINDOW_JSON" \
+            QS_CALENDAR_ROUTE="$calendar_route" \
+            setsid -f quickshell -p "$shell_path" >>"$QS_LOG" 2>&1
+        else
+            notify-send "QuickShell" "Component not found: $shell_path"
+            exit 1
+        fi
+    fi
+}
+
+if [[ -z "$COMPONENT" ]]; then
+    show_help
+    exit 0
+fi
+
+ARGS="$*"
+
+case "$COMPONENT" in
+    wifi)
+        toggle_popup "wifi"
+        ;;
+    bluetooth)
+        toggle_popup "bluetooth"
+        ;;
+    notifications|notif)
+        toggle_popup "notifications"
+        ;;
+    weather)
+        toggle_popup "weather"
+        ;;
+    calendar|cal)
+        toggle_popup "calendar" "calendar"
+        ;;
+    world-clock|worldclock|clock)
+        toggle_popup "calendar" "world-clock"
+        ;;
+    timer|stopwatch|countdown|pomodoro)
+        toggle_popup "calendar" "timer"
+        ;;
+    media|player)
+        toggle_popup "media"
+        ;;
+    quick-settings|qs|volume|vol|brightness|display)
+        toggle_popup "quick-settings"
+        ;;
+    screen-recorder|recorder|record|rec)
+        toggle_popup "screen-recorder"
+        ;;
+    screenshot-toolbox|screenshot|shot|ss)
+        toggle_popup "screenshot-toolbox"
+        ;;
+    launcher|launch|app)
+        toggle_popup "launcher"
+        ;;
+    clipboard|clip|cb)
+        toggle_popup "clipboard"
+        ;;
+    control-center|control|cc)
+        toggle_popup "control-center"
+        ;;
+    power-menu|power|pm)
+        toggle_popup "power-menu"
+        ;;
+    wallpaper-selector|wallpaper|wp)
+        # 壁纸仍由 waypaper 管（配合 matugen-update.sh 换色），
+        # 不启用 quickshell 自带的 wallpaper-selector（它依赖 theme-gen/wallpaper-manager）
+        exec waypaper
+        ;;
+    close-confirm|close|cc-close)
+        toggle_popup "close-confirm"
+        ;;
+    window-switcher|windows|ws|switcher)
+        toggle_popup "window-switcher"
+        ;;
+    task-manager|tasks|taskmgr|tm)
+        toggle_popup "task-manager"
+        ;;
+    todo|todos)
+        toggle_popup "todo"
+        ;;
+    ai-launcher|ai)
+        toggle_popup "ai-launcher"
+        ;;
+    -h|--help|help)
+        show_help
+        ;;
+    logs|log)
+        if [[ -f "$QS_LOG" ]]; then
+            tail -n "${1:-80}" "$QS_LOG"
+        else
+            echo "还没有日志：$QS_LOG（先启动一个组件）"
+        fi
+        ;;
+    *)
+        echo "Unknown component: $COMPONENT"
+        show_help
+        exit 1
+        ;;
+esac

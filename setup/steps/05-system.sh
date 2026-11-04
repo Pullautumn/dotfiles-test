@@ -158,6 +158,91 @@ PAM
     log "gtklock PAM configured"
 }
 
+# ==============================================================================
+# Quickshell —— waybar-quickshell 样式的后端（Mod+F4 使用）
+# ==============================================================================
+# 这一步只准备「能跑起来」的前置条件，不负责启动：
+#   · Theme.js 兜底（否则 matugen 没跑过时所有 QML 都加载失败）
+#   · uv sync 装 Python 依赖（lockscreen 直接调 .venv/bin/python）
+#   · systemd 单元注册（不 enable，和 swaync 抢通知服务，交给切换脚本管）
+setup_quickshell() {
+    section "Phase 7e" "Quickshell (waybar-quickshell 后端)"
+
+    if is_done "setup_quickshell"; then
+        print_skip "Quickshell setup (already done)"
+        return
+    fi
+
+    local qs_dir="$HOME/.config/quickshell"
+
+    if [[ ! -d "$qs_dir" ]]; then
+        print_warn "$qs_dir 不存在，跳过（Mod+F4 的样式将不可用）"
+        mark_done "setup_quickshell"
+        return
+    fi
+
+    # 主题兜底
+    # Commons/Theme.js 是 matugen 生成物且被 gitignore，git clean -fdx / 重装
+    # 都可能把它弄没；没了 Quickshell 只会报 "Script qrc:/qs-blackhole unavailable"。
+    # 所以不光看它在不在，还要看内容完不完整（matugen 写一半也算坏）。
+    local qs_theme="$qs_dir/Commons/Theme.js"
+    local qs_theme_default="$qs_dir/Commons/Theme.js.Default"
+    local qs_screen_model="$qs_dir/Commons/ScreenModel.js"
+
+    if [[ -f "$qs_theme" ]] && grep -q 'function alpha' "$qs_theme" 2>/dev/null; then
+        print_skip "Commons/Theme.js 已存在且完整"
+    elif [[ -f "$qs_theme_default" ]]; then
+        cp -f "$qs_theme_default" "$qs_theme"
+        print_ok "已生成默认 Theme.js（之后 matugen 会覆盖）"
+    else
+        print_warn "Commons/Theme.js 与 Theme.js.Default 都不存在，Quickshell 组件将无法加载"
+    fi
+
+    # QML 的 JS 脚本导入不能用 ../（失败的导入会被替换成 qrc:/qs-blackhole 占位），
+    # 所以每个组件目录都要有自己的一份 ./Theme.js 和 ./ScreenModel.js。
+    # 上游用符号链接，这里用实体拷贝，免得依赖软链权限。
+    local qs_dir_item copied=0
+    for qs_dir_item in "$qs_dir"/*/; do
+        [[ -f "$qs_dir_item/shell.qml" ]] || continue
+        if [[ -f "$qs_theme" ]] \
+           && { [[ ! -f "$qs_dir_item/Theme.js" ]] || [[ "$qs_theme" -nt "$qs_dir_item/Theme.js" ]]; }; then
+            cp -f "$qs_theme" "$qs_dir_item/Theme.js" 2>/dev/null && copied=$((copied + 1))
+        fi
+        if [[ -f "$qs_screen_model" ]] \
+           && { [[ ! -f "$qs_dir_item/ScreenModel.js" ]] || [[ "$qs_screen_model" -nt "$qs_dir_item/ScreenModel.js" ]]; }; then
+            cp -f "$qs_screen_model" "$qs_dir_item/ScreenModel.js" 2>/dev/null && copied=$((copied + 1))
+        fi
+    done
+
+    if (( copied > 0 )); then
+        print_ok "已同步 $copied 个组件目录的 Theme.js / ScreenModel.js"
+    fi
+
+    # Python 依赖
+    if command_exists uv; then
+        if exe "cd '$qs_dir' && uv sync"; then
+            print_ok "Python dependencies installed"
+        else
+            print_warn "uv sync 失败，手动执行: cd ~/.config/quickshell && uv sync"
+        fi
+    else
+        print_warn "未安装 uv，Quickshell 的 Python 组件（天气/计时/通知守护）不可用"
+    fi
+
+    # systemd 单元：只注册，不 enable
+    if [[ -f "$HOME/.config/systemd/user/qs-notifications.service" ]]; then
+        systemctl --user daemon-reload >/dev/null 2>&1 || true
+        print_ok "qs-notifications.service 已注册（开机不自启，由 switch-waybar.sh 管理）"
+    fi
+
+    if ! command_exists quickshell; then
+        print_warn "找不到 quickshell 命令，Mod+F4 切过去后弹窗会全部失效"
+    fi
+
+    mark_done "setup_quickshell"
+    log "Quickshell configured"
+}
+
 setup_matugen() {
     section "Phase 8" "Theme System (Matugen)"
 

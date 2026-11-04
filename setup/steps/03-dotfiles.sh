@@ -133,6 +133,9 @@ _dotfiles_fix_permissions() {
         "$HOME/.config/scripts"
         "$HOME/.config/niri/scripts"
         "$HOME/.config/waybar/scripts"
+        "$HOME/.config/waybar-niri-Win11Like/scripts"
+        "$HOME/.config/waybar-quickshell/scripts"
+        "$HOME/.config/quickshell/scripts"
         "$HOME/.config/matugen/scripts"
         "$HOME/.config/rofi"
     )
@@ -140,6 +143,15 @@ _dotfiles_fix_permissions() {
     for d in "${dirs[@]}"; do
         [[ -d "$d" ]] || continue
         find -L "$d" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} + 2>/dev/null || true
+    done
+
+    # 无后缀的可执行脚本，上面的 *.sh 规则扫不到：
+    # qs-popup（waybar-quickshell 的弹窗调度器）、longshot-sh / screenrec（Win11Like）
+    for d in "$HOME/.local/bin" \
+             "$HOME/.config/waybar-niri-Win11Like/scripts" \
+             "$HOME/.config/waybar-quickshell/scripts"; do
+        [[ -d "$d" ]] || continue
+        find -L "$d" -maxdepth 1 -type f ! -name "*.*" -exec chmod +x {} + 2>/dev/null || true
     done
 
     # rofi 的 scripts/launcher_tN、powermenu_tN 是「跳到对应主题脚本」的入口，
@@ -153,46 +165,41 @@ _dotfiles_fix_permissions() {
     print_ok "脚本可执行权限已设置"
 }
 
-# 把配置里硬编码的 pullautumn / /home/pullautumn 换成当前用户
-_dotfiles_rewrite_legacy_paths() {
-    if [[ "$TARGET_USER" == "$LEGACY_USER" && "$HOME" == "$LEGACY_HOME" ]]; then
-        print_info "当前用户即配置作者，跳过路径替换"
+# ==============================================================================
+# GTK 书签（唯一一个「路径无法自解析」的配置）
+# ==============================================================================
+# GTK 的 bookmarks 只认绝对 file:// URI，不支持 ~、也不展开环境变量，内容必然
+# 跟用户名绑定，只能在安装时按 $HOME 生成。
+#
+# 为什么是「写仓库里那份」而不是「改 ~/.config 下那份」：
+# stow 会把 ~/.config/gtk-3.0 整个目录折叠成指向仓库的软链（和 colors.css、
+# gtk.css 一样，运行时产物都落在仓库里，已 gitignore）。所以根本不存在「$HOME
+# 下单独一份 bookmarks」可以改，只能像其它生成物一样直接写仓库里这份。
+#
+# 早期版本用「find ~/.config -type l → sed readlink -f 的结果」替换用户名，
+# 等于把仓库里所有配置文件改写成对方用户名：git status 变脏、git pull 冲突，
+# 还会把 pullautumn-screenrec 这类标识符一起改掉。已废弃。
+_dotfiles_generate_bookmarks() {
+    local out="$DOTFILES_DIR/gtk-3.0/.config/gtk-3.0/bookmarks"
+    local out_dir
+    out_dir=$(dirname "$out")
+    [[ -d "$out_dir" ]] || return 0
+
+    local -a lines=()
+    local rel
+    # 顺序即侧边栏顺序；目录不存在就不写，免得点进去报错
+    for rel in Code dotfiles Downloads Documents Pictures Music Videos; do
+        [[ -d "$HOME/$rel" ]] && lines+=("file://$HOME/$rel $rel")
+    done
+
+    if (( ${#lines[@]} == 0 )); then
+        print_warn "没有可用的书签目录，跳过 GTK 书签生成"
         return 0
     fi
 
-    print_info "正在把配置里的 $LEGACY_USER 替换为 $TARGET_USER ..."
-
-    local search_dirs=()
-    [[ -d "$HOME/.config" ]] && search_dirs+=("$HOME/.config")
-    [[ -d "$HOME/.local" ]] && search_dirs+=("$HOME/.local")
-    if [[ ${#search_dirs[@]} -eq 0 ]]; then
-        print_info "没有需要处理的配置目录"
-        return 0
-    fi
-
-    local patched=0 link real
-    while IFS= read -r link; do
-        real=$(readlink -f "$link" 2>/dev/null || true)
-        [[ -n "$real" && -f "$real" ]] || continue
-        [[ "$real" == "$DOTFILES_DIR"/* ]] || continue
-        # 只处理文本文件，跳过图片/字体等二进制
-        grep -Iq . "$real" 2>/dev/null || continue
-        # /home/shorin 是配置里残留的第三方路径（waypaper 的 stylesheet）
-        grep -qE "$LEGACY_USER|/home/$LEGACY_USER|/home/shorin" "$real" 2>/dev/null || continue
-
-        if sed -i \
-            -e "s|/home/$LEGACY_USER|$HOME|g" \
-            -e "s|/home/shorin|$HOME|g" \
-            -e "s|file://~/|file://$HOME/|g" \
-            -e "s|=$LEGACY_USER|=$TARGET_USER|g" \
-            -e "s|$LEGACY_USER|$TARGET_USER|g" \
-            "$real" 2>/dev/null; then
-            patched=$((patched + 1))
-            log "  patched: $real"
-        fi
-    done < <(find "${search_dirs[@]}" -type l 2>/dev/null)
-
-    print_ok "已替换 $patched 个配置文件中的用户名/路径"
+    printf '%s\n' "${lines[@]}" > "$out"
+    print_ok "已生成 GTK 书签 ${#lines[@]} 项（路径基于 $HOME）"
+    log "bookmarks generated: $out"
 }
 
 # Flatpak 权限覆盖（装了 flatpak 才有意义）
@@ -258,7 +265,7 @@ apply_dotfiles() {
     _dotfiles_stow_all
     _dotfiles_link_wallpapers
     _dotfiles_fix_permissions
-    _dotfiles_rewrite_legacy_paths
+    _dotfiles_generate_bookmarks
     _dotfiles_flatpak_overrides
     _dotfiles_copy_guides
 
@@ -267,8 +274,19 @@ apply_dotfiles() {
         print_info "显示器配置: ~/.config/niri/conf.d/output.kdl ${DIM}(按实际输出名调整)${NC}"
     fi
 
-    # 两套状态栏都已部署，用快捷键切换
-    if [[ -d "$HOME/.config/waybar-niri-Win11Like" ]]; then
+    # niri 的 screenshot-path 只接受绝对路径，不展开 ~ 和环境变量。装到别的
+    # 用户名下必须手动改，脚本不代改（藏在 kdl 里，自动替换风险大于收益）
+    local env_kdl="$HOME/.config/niri/conf.d/environment.kdl"
+    if [[ -f "$env_kdl" ]] && grep -qF "/home/pullautumn" "$env_kdl" 2>/dev/null; then
+        print_warn "截图路径仍写着作者家目录，需要手动改一处："
+        print_info "  $env_kdl 里的 screenshot-path"
+        print_info "  把 /home/pullautumn 换成 $HOME，再 mkdir -p ~/Pictures/Screenshots"
+    fi
+
+    # 三套状态栏都已部署，用快捷键切换
+    if [[ -d "$HOME/.config/waybar-quickshell" ]]; then
+        print_info "状态栏: Mod+F2 → waybar ${DIM}Mod+F3 → waybar-niri-Win11Like Mod+F4 → waybar-quickshell${NC}"
+    elif [[ -d "$HOME/.config/waybar-niri-Win11Like" ]]; then
         print_info "状态栏: Mod+F2 → waybar ${DIM}Mod+F3 → waybar-niri-Win11Like${NC}"
     fi
 

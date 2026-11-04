@@ -1,0 +1,580 @@
+import Quickshell
+import Quickshell.Wayland
+import Quickshell.Io
+import Quickshell.Services.Pam
+import QtQuick
+import QtQuick.Layouts
+import QtQuick.Controls
+import QtQuick.Effects
+
+// QuickShell Lockscreen - using ext-session-lock-v1 protocol
+// Features: Wallpaper background, lunar calendar, PAM auth with howdy
+
+ShellRoot {
+    id: root
+
+    // Theme colors
+    readonly property color primaryColor: "#3b82f6"
+    readonly property color secondaryColor: "#8b5cf6"
+    readonly property color errorColor: "#ef4444"
+    readonly property color textColor: "#ffffff"
+    readonly property color textMuted: Qt.rgba(1, 1, 1, 0.7)
+    readonly property color textDim: Qt.rgba(1, 1, 1, 0.5)
+
+    property bool authInProgress: false
+    property string errorMessage: ""
+    property string statusMessage: ""
+    property string userName: Quickshell.env("USER") || "User"
+    property string homeDir: Quickshell.env("HOME") || "/home"
+
+    // Time properties
+    property string currentTime: ""
+    property string currentDate: ""
+
+    // Lunar calendar properties
+    property string lunarDate: ""
+    property string lunarYear: ""
+    property string zodiac: ""
+    property string festival: ""
+
+    // Wallpaper
+    property string wallpaperPath: ""
+
+    // Update time every second
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            var now = new Date()
+            currentTime = Qt.formatTime(now, "HH:mm")
+            currentDate = Qt.formatDate(now, "M月d日 dddd")
+        }
+    }
+
+    // Get lunar calendar info
+    Process {
+        id: lunarProcess
+        command: [homeDir + "/.config/quickshell/.venv/bin/python",
+                  homeDir + "/.config/quickshell/lockscreen/lunar_info.py"]
+        stdout: SplitParser {
+            onRead: data => {
+                try {
+                    var info = JSON.parse(data)
+                    if (info.hasLunar) {
+                        lunarDate = info.lunarFull || ""
+                        lunarYear = (info.ganzhiYear || "") + (info.zodiac ? "年 " + info.zodiac + "年" : "")
+                        festival = info.festival || ""
+                    }
+                } catch (e) {
+                    console.log("Failed to parse lunar info:", e)
+                }
+            }
+        }
+    }
+
+    // Get current wallpaper
+    Process {
+        id: wallpaperProcess
+        command: ["readlink", "-f", homeDir + "/.cache/current_wallpaper"]
+        stdout: SplitParser {
+            onRead: data => {
+                var path = data.trim()
+                if (path) {
+                    wallpaperPath = "file://" + path
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        lunarProcess.running = true
+        wallpaperProcess.running = true
+    }
+
+    // PAM authentication context
+    PamContext {
+        id: pam
+        config: "sudo"
+        user: userName
+
+        onActiveChanged: {
+            if (active) {
+                authInProgress = true
+                statusMessage = "正在认证..."
+            }
+        }
+
+        onPamMessage: {
+            console.log("PAM message:", pam.message, "responseRequired:", pam.responseRequired)
+            if (pam.responseRequired) {
+                if (pam.responseVisible) {
+                    pam.respond(userName)
+                } else {
+                    statusMessage = pam.message || "请输入密码或进行人脸识别"
+                    authInProgress = false
+                }
+            } else {
+                statusMessage = pam.message
+            }
+        }
+
+        onCompleted: function(result) {
+            console.log("PAM completed:", result)
+            authInProgress = false
+            statusMessage = ""
+
+            if (result === PamResult.Success) {
+                sessionLock.locked = false
+            } else {
+                errorMessage = "认证失败"
+                errorClearTimer.restart()
+            }
+        }
+
+        onError: function(err) {
+            console.log("PAM error:", err)
+            authInProgress = false
+            statusMessage = ""
+            errorMessage = "认证错误"
+            errorClearTimer.restart()
+        }
+    }
+
+    Timer {
+        id: errorClearTimer
+        interval: 3000
+        onTriggered: errorMessage = ""
+    }
+
+    // Session Lock - ext-session-lock-v1 protocol
+    WlSessionLock {
+        id: sessionLock
+        locked: true
+
+        onLockedChanged: {
+            console.log("Session lock changed:", locked)
+            if (!locked) {
+                Qt.quit()
+            }
+        }
+
+        surface: Component {
+            WlSessionLockSurface {
+                id: lockSurface
+                color: "#000000"
+
+                // Wallpaper background
+                Image {
+                    id: wallpaperImage
+                    anchors.fill: parent
+                    source: wallpaperPath
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: true
+
+                    // Fallback gradient if no wallpaper
+                    Rectangle {
+                        anchors.fill: parent
+                        visible: wallpaperImage.status !== Image.Ready
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "#1a1a2e" }
+                            GradientStop { position: 0.5; color: "#16213e" }
+                            GradientStop { position: 1.0; color: "#0f0f23" }
+                        }
+                    }
+                }
+
+                // Dark overlay for readability
+                Rectangle {
+                    anchors.fill: parent
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: Qt.rgba(0, 0, 0, 0.3) }
+                        GradientStop { position: 0.4; color: Qt.rgba(0, 0, 0, 0.4) }
+                        GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.6) }
+                    }
+                }
+
+                // Main content
+                Item {
+                    anchors.fill: parent
+
+                    // ===== Top: Clock and Date =====
+                    Column {
+                        id: clockArea
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.top: parent.top
+                        anchors.topMargin: parent.height * 0.1
+                        spacing: 8
+
+                        // Time
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: currentTime
+                            font.pixelSize: 108
+                            font.weight: Font.Light
+                            font.letterSpacing: -2
+                            color: root.textColor
+                            style: Text.Outline
+                            styleColor: Qt.rgba(0, 0, 0, 0.4)
+                        }
+
+                        // Solar date
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: currentDate
+                            font.pixelSize: 22
+                            font.weight: Font.Normal
+                            color: root.textMuted
+                        }
+
+                        // Lunar date row
+                        Row {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 16
+                            visible: lunarDate.length > 0
+
+                            Text {
+                                text: lunarYear
+                                font.pixelSize: 15
+                                color: root.textDim
+                            }
+
+                            Rectangle {
+                                width: 1
+                                height: 14
+                                color: root.textDim
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: lunarDate
+                                font.pixelSize: 15
+                                color: root.textDim
+                            }
+                        }
+
+                        // Festival (if any)
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: festival.length > 0
+                            width: festivalText.width + 24
+                            height: 28
+                            radius: 14
+                            color: Qt.rgba(1, 1, 1, 0.15)
+
+                            Text {
+                                id: festivalText
+                                anchors.centerIn: parent
+                                text: festival
+                                font.pixelSize: 13
+                                font.weight: Font.Medium
+                                color: "#fbbf24"
+                            }
+                        }
+                    }
+
+                    // ===== Center: Login Area =====
+                    Column {
+                        anchors.centerIn: parent
+                        anchors.verticalCenterOffset: 30
+                        spacing: 20
+                        width: 340
+
+                        // User avatar
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 100
+                            height: 100
+                            radius: 50
+                            color: authInProgress ? root.secondaryColor :
+                                   (avatarMouse.containsMouse ? Qt.lighter(root.primaryColor, 1.2) : root.primaryColor)
+
+                            Behavior on color { ColorAnimation { duration: 200 } }
+
+                            // Glow effect
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: parent.width + 8
+                                height: parent.height + 8
+                                radius: width / 2
+                                color: "transparent"
+                                border.width: 2
+                                border.color: authInProgress ? root.secondaryColor : root.primaryColor
+                                opacity: 0.4
+
+                                SequentialAnimation on scale {
+                                    running: authInProgress
+                                    loops: Animation.Infinite
+                                    NumberAnimation { to: 1.1; duration: 800; easing.type: Easing.InOutSine }
+                                    NumberAnimation { to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                                }
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: authInProgress ? "\uf2f1" : "\uf007"
+                                font.family: "Symbols Nerd Font Mono"
+                                font.pixelSize: 44
+                                color: root.textColor
+
+                                RotationAnimator on rotation {
+                                    running: authInProgress
+                                    from: 0; to: 360
+                                    duration: 2000
+                                    loops: Animation.Infinite
+                                }
+                            }
+
+                            MouseArea {
+                                id: avatarMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: !authInProgress && !pam.responseRequired
+                                onClicked: root.startAuth()
+                            }
+                        }
+
+                        // Username
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: userName
+                            font.pixelSize: 24
+                            font.weight: Font.Medium
+                            color: root.textColor
+                        }
+
+                        // Status message
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: statusMessage
+                            font.pixelSize: 14
+                            color: root.secondaryColor
+                            visible: statusMessage.length > 0
+                        }
+
+                        // Password input
+                        Rectangle {
+                            width: parent.width
+                            height: 52
+                            radius: 26
+                            color: Qt.rgba(1, 1, 1, 0.1)
+                            border.color: passwordField.activeFocus ? root.primaryColor : Qt.rgba(1, 1, 1, 0.2)
+                            border.width: 2
+
+                            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                            Row {
+                                anchors.fill: parent
+                                anchors.leftMargin: 20
+                                anchors.rightMargin: 20
+                                spacing: 12
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "\uf023"
+                                    font.family: "Symbols Nerd Font Mono"
+                                    font.pixelSize: 18
+                                    color: Qt.rgba(1, 1, 1, 0.5)
+                                }
+
+                                TextInput {
+                                    id: passwordField
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 80
+                                    color: root.textColor
+                                    font.pixelSize: 16
+                                    echoMode: TextInput.Password
+                                    clip: true
+                                    focus: true
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "输入密码..."
+                                        color: Qt.rgba(1, 1, 1, 0.4)
+                                        font.pixelSize: 16
+                                        visible: !passwordField.text && !passwordField.activeFocus
+                                    }
+
+                                    onAccepted: {
+                                        if (text.length > 0) {
+                                            if (pam.responseRequired) {
+                                                pam.respond(text)
+                                                text = ""
+                                            } else {
+                                                root.startAuthWithPassword(text)
+                                            }
+                                        }
+                                    }
+
+                                    Keys.onEscapePressed: {
+                                        text = ""
+                                        errorMessage = ""
+                                    }
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: authInProgress ? "\uf110" : "\uf054"
+                                    font.family: "Symbols Nerd Font Mono"
+                                    font.pixelSize: 18
+                                    color: root.primaryColor
+                                    visible: passwordField.text.length > 0 || authInProgress
+
+                                    RotationAnimator on rotation {
+                                        running: authInProgress
+                                        from: 0; to: 360
+                                        duration: 1000
+                                        loops: Animation.Infinite
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        anchors.margins: -10
+                                        enabled: !authInProgress && passwordField.text.length > 0
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (pam.responseRequired) {
+                                                pam.respond(passwordField.text)
+                                                passwordField.text = ""
+                                            } else {
+                                                root.startAuthWithPassword(passwordField.text)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Error message
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: errorMessage
+                            font.pixelSize: 14
+                            color: root.errorColor
+                            visible: errorMessage.length > 0
+                        }
+
+                        // Hint
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "点击头像进行人脸识别，或输入密码"
+                            font.pixelSize: 12
+                            color: Qt.rgba(1, 1, 1, 0.4)
+                            visible: !authInProgress && !pam.responseRequired && passwordField.text.length === 0
+                        }
+                    }
+
+                    // ===== Bottom: Power Buttons =====
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 50
+                        spacing: 50
+
+                        Repeater {
+                            model: [
+                                { icon: "\uf186", label: "睡眠", cmd: ["systemctl", "suspend"] },
+                                { icon: "\uf021", label: "重启", cmd: ["systemctl", "reboot"] },
+                                { icon: "\uf011", label: "关机", cmd: ["systemctl", "poweroff"] }
+                            ]
+
+                            Column {
+                                spacing: 8
+
+                                Rectangle {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 48
+                                    height: 48
+                                    radius: 24
+                                    color: pwrMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(1, 1, 1, 0.08)
+
+                                    Behavior on color { ColorAnimation { duration: 150 } }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.icon
+                                        font.family: "Symbols Nerd Font Mono"
+                                        font.pixelSize: 20
+                                        color: pwrMouse.containsMouse ? "#ffffff" : Qt.rgba(1, 1, 1, 0.6)
+                                    }
+
+                                    MouseArea {
+                                        id: pwrMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            pwrProc.command = modelData.cmd
+                                            pwrProc.running = true
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: modelData.label
+                                    font.pixelSize: 12
+                                    color: Qt.rgba(1, 1, 1, 0.5)
+                                }
+                            }
+                        }
+                    }
+
+                    // Global key handler
+                    focus: true
+                    Keys.onPressed: function(event) {
+                        // Emergency exit: Ctrl+Alt+Q (for testing only)
+                        if (event.key === Qt.Key_Q &&
+                            (event.modifiers & Qt.ControlModifier) &&
+                            (event.modifiers & Qt.AltModifier)) {
+                            console.log("Emergency exit triggered")
+                            sessionLock.locked = false
+                            event.accepted = true
+                            return
+                        }
+
+                        if (!passwordField.activeFocus) {
+                            passwordField.forceActiveFocus()
+                            if (event.text.length > 0 && !event.modifiers) {
+                                passwordField.text += event.text
+                                event.accepted = true
+                            }
+                        }
+                    }
+
+                    Component.onCompleted: {
+                        passwordField.forceActiveFocus()
+                    }
+                }
+
+                Process {
+                    id: pwrProc
+                    running: false
+                }
+            }
+        }
+    }
+
+    property string pendingPassword: ""
+
+    function startAuth() {
+        if (authInProgress || pam.active) return
+        errorMessage = ""
+        pendingPassword = ""
+        pam.start()
+    }
+
+    function startAuthWithPassword(password) {
+        if (authInProgress) return
+        errorMessage = ""
+        pendingPassword = password
+        if (!pam.active) {
+            pam.start()
+        } else if (pam.responseRequired) {
+            pam.respond(password)
+        }
+    }
+}

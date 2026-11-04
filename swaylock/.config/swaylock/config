@@ -1,4 +1,4 @@
-image=/home/pullautumn/.config/niri/background.jpg
+image=~/.config/swaylock/background.jpg
 
 indicator-radius=100
 indicator-thickness=15

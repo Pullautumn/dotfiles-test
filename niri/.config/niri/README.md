@@ -29,16 +29,16 @@
 | 快捷键 | 作用 |
 |---|---|
 | `Mod+Return` / `Mod+T` | 终端（kitty） |
-| `Mod+A` | 应用启动器（fuzzel） |
+| `Mod+A` | 应用启动器（fuzzel；Quickshell 样式下是 Quickshell launcher） |
 | `Mod+O` / `Mod+G` | Overview 总览 |
 | `Mod+Q` / `Alt+F4` | 关闭窗口 |
 | `Mod+Y` | yazi（在 kitty 里） |
 | `Mod+E` | 文件管理器（优先 nautilus，没有就 thunar） |
 | `Mod+Alt+E` | 文件管理器（thunar） |
 | `Mod+B` | 浏览器 |
-| `Mod+V` / `Mod+Shift+V` | 剪贴板（shorinclip / fuzzel 图片预览版） |
+| `Mod+V` / `Mod+Shift+V` | 剪贴板（shorinclip / fuzzel 图片预览版；Quickshell 样式下是 Quickshell clipboard） |
 | `Mod+Alt+L` | 锁屏（hyprlock） |
-| `Mod+N` | 通知中心（swaync） |
+| `Mod+N` | 通知中心（swaync；Quickshell 样式下是 Quickshell 通知中心） |
 | `Mod+Alt+Slash` | 快捷键说明弹窗 |
 | `Alt+Tab` | 窗口快速切换（fuzzel） |
 | `Mod+方向键` | 切换聚焦；加 `Ctrl` 变成移动窗口 |
@@ -50,7 +50,7 @@
 | 快捷键 | 作用 |
 |---|---|
 | `Mod+F1` | 开关 fcitx5 |
-| `Mod+F2` / `Mod+F3` | 切换 waybar 样式（默认 / Win11Like） |
+| `Mod+F2` / `Mod+F3` / `Mod+F4` | 切换 waybar 样式（默认 / Win11Like / Quickshell），同时切换对应的通知后端 |
 | `Mod+F5` / `Mod+F8` | Btrfs 快照存档 / 读档 |
 | `Mod+F9` | 护眼模式（wlsunset）开关 |
 | `Mod+F10` / `Mod+Shift+F10` | 随机换壁纸 / 随机下载动漫壁纸 |

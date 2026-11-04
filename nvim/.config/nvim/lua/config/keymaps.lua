@@ -13,6 +13,13 @@ end
 local toggle = require("snacks").toggle
 local picker = require("snacks").picker
 
+-- Python 解释器：不再写死作者的用户名。
+-- 优先用 ~/Code/Python/.venv，没建虚拟环境就退回系统 python3，谁装都能按。
+local PY_VENV = vim.fn.expand("~/Code/Python/.venv/bin/python")
+if vim.fn.executable(PY_VENV) == 0 then
+    PY_VENV = "python3"
+end
+
 -- ============================================================================
 -- Lazy 插件管理器相关
 -- ============================================================================
@@ -620,18 +627,18 @@ map(
 map(
     "n",
     "<leader>rpf",
-    "<cmd>FloatermNew --autoclose=0 /home/pullautumn/Code/Python/.venv/bin/python '%'<cr>",
+    "<cmd>FloatermNew --autoclose=0 " .. PY_VENV .. " '%'<cr>",
     { desc = "🐍 浮动终端运行Python", silent = true }
 )
 -- 下半区运行（保持打开）
 map(
     "n",
     "<leader>rpb",
-    "<cmd>FloatermNew --wintype=split --height=20 --autoclose=0 /home/pullautumn/Code/Python/.venv/bin/python '%'<cr>",
+    "<cmd>FloatermNew --wintype=split --height=20 --autoclose=0 " .. PY_VENV .. " '%'<cr>",
     { desc = "🐍 下半区运行Python", silent = true }
 )
 -- 右半区运行（保持打开）
--- map("n", "<leader>rpb", "<cmd>FloatermNew --wintype=split --height=20 --autoclose=0 /home/pullautumn/Code/Python/.venv/bin/python '%'<cr>", { desc = "🐍 下半区运行Python", silent = true })
+-- map("n", "<leader>rpb", "<cmd>FloatermNew --wintype=split --height=20 --autoclose=0 python3 '%'<cr>", { desc = "🐍 下半区运行Python", silent = true })
 
 -- ========== s ==========
 -- ========== 内容/符号 搜索 ==========
@@ -750,7 +757,7 @@ map(
 map(
     "n",
     "<leader>tp",
-    "<cmd>FloatermNew --wintype=float --width=0.9 --height=0.9 /home/pullautumn/Code/Python/.venv/bin/python <cr>",
+    "<cmd>FloatermNew --wintype=float --width=0.9 --height=0.9 " .. PY_VENV .. " <cr>",
     { desc = "🐍 Python 终端", silent = true }
 )
 map(

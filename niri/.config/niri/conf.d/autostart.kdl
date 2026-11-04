@@ -19,13 +19,18 @@ spawn-sh-at-startup "dbus-update-activation-environment --systemd WAYLAND_DISPLA
 // spawn-sh-at-startup "systemctl --user set-environment XDG_SESSION_CLASS=user"
 // 通知程序
 // spawn-at-startup "mako"
+// 开机固定是 main 样式：swaync + 裸 waybar。
+// 切到 Quickshell 样式（Mod+F4）时由 ~/.config/scripts/switch-waybar.sh
+// 关掉 swaync、拉起 qs-notifications.service；切回时反向操作。
 spawn-at-startup "swaync"
 // 任务栏
 spawn-at-startup "waybar"
 // 输入法
 spawn-at-startup "fcitx5" 
 // 剪贴板守护进程
-spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
+// 只留下面那行拆分 text / image 的版本：两条都开会让每次复制在 cliphist 里
+// 存 3 份，剪贴板面板里出现重复条目（Quickshell 的 clipboard 读同一个库，也会重复）
+// spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
 // 使用rofi剪贴板
 spawn-sh-at-startup "wl-paste --type text --watch cliphist store & wl-paste --type image --watch cliphist store & wait"
 // spawn-at-startup "wl-paste" "--watch" "cliphist" "store"

@@ -35,4 +35,9 @@ environment {
     // ========== Java ==========
     _JAVA_AWT_WM_NONREPARENTING "1" // 修复 Java 应用（如 JetBrains IDE）在平铺窗口管理器下显示异常
 }
+// ⚠️ 下面这行写死了作者的家目录 /home/pullautumn。装到别的用户名下必须自己改，
+//    安装脚本**不会**自动替换（只会在结束时提醒）。
+//    改法：把 /home/pullautumn 换成 /home/你的用户名，然后 mkdir -p 那个目录，
+//    目录不存在时 niri 截图会直接失败。
+//    想放到别处也行，niri 不支持 ~ 和环境变量，只能写绝对路径。
 screenshot-path "/home/pullautumn/Pictures/Screenshots/from %Y-%m-%d %H-%M-%S.png"

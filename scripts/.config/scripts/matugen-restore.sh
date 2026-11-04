@@ -9,7 +9,6 @@ CUSTOM_DIR="$HOME/.config/matugen/custom"
 # [1] 配置文件还原列表
 RESTORE_LIST=(
     "btop/catppuccin_mocha.theme"
-    "Code/User/settings.json"
     "fastfetch/config.jsonc"
     "fuzzel/colors.ini"
     "kitty/current-theme.conf"
@@ -18,6 +17,13 @@ RESTORE_LIST=(
     "swayosd/colors.css"
     "yazi/theme.toml"
 )
+
+# custom/Code/User/settings.json 是作者本机 VS Code 设置的备份，里面写死了
+# 作者的家目录和 Python 解释器路径。还原到别人机器上等于拿作者的设置盖掉他自己的，
+# 所以只在当前用户就是作者时才纳入还原列表。
+if [ "$(id -un)" = "pullautumn" ]; then
+    RESTORE_LIST+=("Code/User/settings.json")
+fi
 
 # 检测语言环境
 if env | grep -q "zh_CN"; then IS_CN=true; else IS_CN=false; fi
