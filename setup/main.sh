@@ -118,12 +118,13 @@ main() {
     setup_locale
     setup_bash_path
     setup_local_bin
-    setup_gtklock_pam
+    install_wayscrollshot
+    setup_qs_lock_pam
     setup_quickshell
     setup_matugen
     setup_desktop_tweaks
     enable_services
-    setup_ly
+    setup_sddm
     setup_user_dirs
 
     show_completion

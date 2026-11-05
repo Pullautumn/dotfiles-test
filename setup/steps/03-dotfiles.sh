@@ -114,11 +114,18 @@ _dotfiles_link_wallpapers() {
     mkdir -p "$HOME/Pictures"
     local dst="$HOME/Pictures/Wallpapers"
 
+    # 已存在的真实目录先改名备份；移不动就放弃建链，绝不动用户原目录
     if [[ -d "$dst" && ! -L "$dst" ]]; then
-        mv "$dst" "$dst.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || rm -rf "$dst"
+        local bak="$dst.bak.$(date +%Y%m%d%H%M%S)"
+        if mv "$dst" "$bak"; then
+            print_ok "原壁纸目录已备份: $bak"
+        else
+            print_warn "无法移开 $dst，跳过壁纸链接（原有目录保持不动）"
+            return 0
+        fi
     fi
-    rm -f "$dst"
 
+    # ln -sfn 可覆盖已存在的软链，无需先删
     if ln -sfn "$src" "$dst"; then
         print_ok "壁纸目录已链接: $dst"
     else
@@ -145,22 +152,30 @@ _dotfiles_fix_permissions() {
         find -L "$d" -type f \( -name "*.sh" -o -name "*.py" \) -exec chmod +x {} + 2>/dev/null || true
     done
 
-    # 无后缀的可执行脚本，上面的 *.sh 规则扫不到：
-    # qs-popup（waybar-quickshell 的弹窗调度器）、longshot-sh / screenrec（Win11Like）
-    for d in "$HOME/.local/bin" \
-             "$HOME/.config/waybar-niri-Win11Like/scripts" \
-             "$HOME/.config/waybar-quickshell/scripts"; do
+    # 无后缀的可执行脚本：qs-lock / qs-popup / quickload / toggle-wlsunset、
+    # niri-binds、cliphist-fuzzel-img、rofi 的 launcher_tN / powermenu_tN 都属于这类。
+    #
+    # 判据不用「目录白名单」，而是看文件首行是不是 shebang —— 早期版本维护过一份
+    # 白名单，它自己过期了：留着 waybar-niri-Win11Like/scripts 和
+    # waybar-quickshell/scripts（这两个目录里早已没有任何无后缀脚本），却漏掉了
+    # 真的有 niri-binds 的 niri/scripts、真的有 cliphist-fuzzel-img 的 waybar/scripts。
+    # 后果是 spawn 时 execve 拿到 EACCES：Mod+Alt+Slash 按了毫无反应、
+    # Mod+Shift+V 剪贴板静默失败，而 niri 只在日志里留一行，极难定位。
+    #
+    # 两个实现细节：
+    #   - 不加 -maxdepth。rofi 的入口分布在 scripts/launcher_tN 和
+    #     launchers/type-N/launcher_tN 两层，限深度会漏掉后者。
+    #   - -print0 + read -d '' 处理带空格的文件名；! -name "*.*" 只挑没有扩展名
+    #     的文件（.sh / .py 已由上一段批量处理，图片等带扩展名的顺带排掉）。
+    local f
+    for d in "${dirs[@]}"; do
         [[ -d "$d" ]] || continue
-        find -L "$d" -maxdepth 1 -type f ! -name "*.*" -exec chmod +x {} + 2>/dev/null || true
+        while IFS= read -r -d '' f; do
+            if [[ "$(head -c 2 "$f" 2>/dev/null)" == "#!" ]]; then
+                chmod +x "$f" 2>/dev/null || true
+            fi
+        done < <(find -L "$d" -type f ! -name "*.*" -print0 2>/dev/null)
     done
-
-    # rofi 的 scripts/launcher_tN、powermenu_tN 是「跳到对应主题脚本」的入口，
-    # 没有 .sh 后缀，上面的 *.sh 规则扫不到，必须单独赋权，
-    # 否则 waybar 的 launcher 点击后无反应。
-    if [[ -d "$HOME/.config/rofi" ]]; then
-        find -L "$HOME/.config/rofi" -type f \( -name "launcher_t*" -o -name "powermenu_t*" \) \
-            -exec chmod +x {} + 2>/dev/null || true
-    fi
 
     print_ok "脚本可执行权限已设置"
 }
@@ -240,7 +255,12 @@ apply_dotfiles() {
         return
     fi
 
+    # 已部署过：stow 不重跑（免得覆盖用户改过的配置），但执行位要补一次。
+    # 权限修复本身幂等，而 x 位又极容易丢 —— 从 Windows 拷过来的文件、tar 不带 -p、
+    # 手动编辑保存，都会让它消失，表现是「快捷键按了没反应」这种查不出所以然的症状。
+    # 放在 is_done 之前，重跑安装器就能修好，不必 --reset 清掉全部标记。
     if is_done "apply_dotfiles"; then
+        _dotfiles_fix_permissions
         print_skip "Dotfiles applied (already done)"
         return
     fi

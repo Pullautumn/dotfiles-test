@@ -20,7 +20,7 @@ setup/
     02-packages.sh      必需软件分组安装、AUR、可选软件 fzf 勾选（装包带转圈进度）
     03-dotfiles.sh      备份旧配置、stow 部署、壁纸链接、GTK 书签生成
     04-apps.sh          nvim / zsh / mpv / yazi
-    05-system.sh        locale、PATH、PAM、matugen、系统服务、ly、用户目录
+    05-system.sh        locale、PATH、PAM、matugen、系统服务、SDDM、用户目录
     99-completion.sh    完成提示与重启
   common-applist.txt    可选软件清单：安装时用 fzf 勾选，改这里就能增删
   resources/            安装器素材区：不走 stow，运行时复制到家目录
@@ -37,7 +37,7 @@ setup/
 | `clone_dotfiles` | 01 | 本地运行直接用当前仓库，否则克隆到 `~/.dotfiles` |
 | `install_packages` | 02 | 按 `PKG_GROUPS` 分组装必需包（已装的组直接记 OK），再逐包装必需的 AUR 包，全程不询问 |
 | `install_optional_packages` | 02 | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装（`--yes` 则全装） |
-| `apply_dotfiles` | 03 | 备份 → stow → 壁纸链接 → 权限 → 用户名替换 → flatpak 覆盖 |
+| `apply_dotfiles` | 03 | 备份 → stow → 壁纸链接 → 权限 → 用户名替换 → flatpak 覆盖。已部署过时 stow 跳过，但**执行位仍会补修一次**（x 位易丢，重跑即可修，不必 `--reset`） |
 | `setup_nvim` | 04 | 装 neovim，同步 LazyVim 插件 |
 | `setup_zsh` | 04 | 装 zsh，改默认 shell（配置由 zshenv/zsh 包提供） |
 | `setup_mpv` | 04 | 装 mpv，可选下载 Anime4K |
@@ -45,12 +45,12 @@ setup/
 | `setup_locale` | 05 | 生成 en_US.UTF-8 与 zh_CN.UTF-8 |
 | `setup_bash_path` | 05 | 把 `~/.local/bin` 加进 PATH |
 | `setup_local_bin` | 05 | 本地脚本可执行权限 |
-| `setup_gtklock_pam` | 05 | 创建 `/etc/pam.d/gtklock` |
+| `setup_qs_lock_pam` | 05 | 创建 `/etc/pam.d/qs-lock`（缺 howdy 时**询问是否安装**人脸识别，有 howdy 再加 `qs-lock-face` 并自动探测 `pam_howdy.so` / `pam_python.so`）。**每次运行都检查，不受 `is_done` 短路**，补装 howdy 后重跑即可 |
 | `setup_quickshell` | 05 | 兜底 `Theme.js`、`uv sync`、注册 `qs-notifications.service` |
 | `setup_matugen` | 05 | 用当前壁纸生成 Material You 配色 |
 | `setup_desktop_tweaks` | 05 | 默认终端、窗口按钮、i2c 权限 |
 | `enable_services` | 05 | NetworkManager / bluetooth / swayosd |
-| `setup_ly` | 05 | 装 ly 并启用 `ly@tty1` |
+| `setup_sddm` | 05 | 装 SDDM + lunar-glass 主题，写 `/etc/sddm.conf.d/` drop-in |
 | `setup_user_dirs` | 05 | 建 `~/Pictures/Wallpapers` 等目录 |
 | `show_completion` | 99 | 收尾提示与重启倒计时 |
 
@@ -60,7 +60,7 @@ setup/
 bash install.sh                 # 全量安装
 bash install.sh --minimal       # 只装核心，跳过可选软件
 bash install.sh --no-stow       # 只装软件，不动配置
-bash install.sh --yes           # 全程自动确认（可选软件按清单全装）
+bash install.sh --yes           # 全程自动确认（可选软件按清单全装），且不自动重启
 bash install.sh --no-reboot     # 装完不自动重启
 bash install.sh --reset         # 清空进度，重新开始
 ```
@@ -97,8 +97,8 @@ bash install.sh --reset         # 清空进度，重新开始
 
 ## 与上游的区别
 
-- 配置内容全部来自 Pullautumn：niri + waybar + swaync + fuzzel/rofi + awww/waypaper + gtklock。
-- 移除了上游的 quickshell / tmux / fish / ghostty / SDDM 相关步骤。
-- 显示管理器使用 ly（`ly@tty1`），不再使用 SDDM。
+- 配置内容全部来自 Pullautumn：niri + waybar + swaync + fuzzel/rofi + awww/waypaper + quickshell 锁屏。
+- 移除了上游的 tmux / fish / ghostty 相关步骤。
+- 显示管理器与上游一致用 SDDM（lunar-glass 主题），配置写进 `/etc/sddm.conf.d/` 的 drop-in。
 - 新增 `--yes` / `--no-reboot` 参数。
 - 可选软件改为独立清单 `common-applist.txt` + fzf 勾选，不再写在脚本里。

@@ -98,7 +98,7 @@
                 },
                 {
                     "label": "",
-                    "command": "gtklock"
+                    "command": "qs-lock"
                 },
                 {
                     "label": "",

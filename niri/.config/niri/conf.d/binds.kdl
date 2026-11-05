@@ -22,7 +22,12 @@ binds {
     Mod+Alt+W hotkey-overlay-title="切换壁纸 Change wallpaper" {spawn "waypaper";}
     Mod+Alt+M hotkey-overlay-title="切换颜色策略 Change color strategy" {spawn "~/.config/scripts/matugen-select-type.sh";}
     Mod+Alt+T hotkey-overlay-title="切换颜色策略 Change color strategy" {spawn "~/.config/scripts/matugen-select-type.sh";}
+    // 图形化编辑 niri 配置（圆角/模糊/动画/键位/输出）。直接在原地读写 ~/.config/niri，
+    // 因为该目录是 stow 折叠软链，所以改动直接落在 ~/.dotfiles 里。
+    Mod+Shift+N hotkey-overlay-title="niri 配置编辑器 NiriMod" {spawn "nirimod";}
     Mod+F10 hotkey-overlay-title="随机切换壁纸 Random wallpaper" {spawn "waypaper" "--random";}
+    // 只影响「下次开机」走不走随机，不动当前这张；状态存在 ~/.cache/wallpaper-auto-rotate
+    Mod+Ctrl+F10 hotkey-overlay-title="自动换壁纸 开/关 Toggle auto wallpaper" {spawn "~/.config/scripts/wallpaper-rotate.sh" "toggle";}
     Mod+Shift+F10 hotkey-overlay-title="随机下载动漫壁纸 Random download anime wallpaper" {spawn "~/.config/scripts/random-anime-wallpaper.sh";}
 
     // F功能键快捷键
@@ -62,9 +67,10 @@ binds {
     Mod+A     hotkey-overlay-title="应用启动器"    repeat=false    { spawn "~/.config/scripts/switch-waybar.sh" "launcher"; }
     Mod+Shift+V     hotkey-overlay-title="剪贴板"  repeat=false    { spawn "~/.config/scripts/switch-waybar.sh" "clipboard"; }
     Mod+V hotkey-overlay-title="剪贴板 Clipboard" {spawn-sh "kitty --single-instance --title shorinclip -e shorinclip";} // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
-    // 锁屏
-    // Mod+Ctrl+L     hotkey-overlay-title="锁屏"     { spawn "gtklock"; }
-    Mod+Alt+L hotkey-overlay-title="锁屏" { spawn-sh "hyprlock -c ~/.config/niri/hyprlock.conf"; }
+    // 锁屏：quickshell 的 lockscreen 组件（ext-session-lock-v1，PAM 认证）
+    // LOCK_GRACE_TIMEOUT=3 是手动锁屏的宽限时长（3 秒内动鼠标可取消）。
+    // 0 = 立刻要密码；空闲超时那条走 swayidle.sh，用的是 30 秒。
+    Mod+Alt+L hotkey-overlay-title="锁屏" { spawn-sh "LOCK_GRACE_TIMEOUT=3 qs-lock"; }
 
 	
     // 文档管理器。如果有nautilus的话会优先打开nautilus，没有的话会打开thunar， "--new-window"参数是允许打开新的窗口
@@ -281,26 +287,26 @@ binds {
     // 手动切换窗口居中
     Mod+C    hotkey-overlay-title="切换窗口居中"     { center-column; }  
 
-    // 截图相关
-    Mod+Ctrl+A  hotkey-overlay-title="选取区域截图 Select screenshot"  {spawn-sh "niri msg action screenshot --show-pointer false && pkill -f -USR1 screenshot-sound.sh";}
-    Mod+Alt+A  hotkey-overlay-title="截取聚焦窗口 Focus-window screenshot" { spawn-sh "niri msg action screenshot-window && pkill -f -USR1 screenshot-sound.sh"; }
-    Mod+Alt+Ctrl+A  hotkey-overlay-title="截取显示器 Monitor screenshot" { spawn-sh "niri msg action screenshot-screen --show-pointer false && pkill -f -USR1 screenshot-sound.sh"; }
+    // === 截图（键位与 jswysnemc 一致）===
+    // 下面三个是 niri 内置动作，文件写到 screenshot-path（见 conf.d/environment.kdl）
+    Print       hotkey-overlay-title="截图"        { screenshot; }
+    Ctrl+Print  hotkey-overlay-title="截取当前屏幕" { screenshot-screen; }
+    Alt+Print   hotkey-overlay-title="截取当前窗口" { screenshot-window; }
 
-    // Mod+p hotkey-overlay-title="截图" { spawn-sh "grim -g \"$(slurp)\" - | swappy -f - -o - | wl-copy"; }
-	// Mod+Ctrl+p hotkey-overlay-title="全屏截图" { spawn-sh "grim - | swappy -f - -o - | wl-copy"; }
-    // Mod+P hotkey-overlay-title="截图" { spawn "bash" "-c" "flameshot gui"; }
-    Ctrl+Alt+A hotkey-overlay-title="截图" { spawn-sh "grim -g \"$(slurp)\" - | markpix -f - -o - | wl-copy"; }
-    // Mod+p hotkey-overlay-title="截图" { spawn "bash" "~/.config/niri/scripts/screenshot.sh"; }
-    // Mod+Alt+p hotkey-overlay-title="录屏" { spawn "bash" "~/.config/niri/scripts/wf-recorder.sh"; }
-    Print hotkey-overlay-title="截图" { spawn-sh "grim -g \"$(slurp)\" - | satty -f - -o - | wl-copy"; }
-    //Mod+Shift+S { spawn "~/.config/niri/scripts/satty-screenshot.sh";}
-    Mod+Shift+S  hotkey-overlay-title="截图后按下此键进行编辑" { spawn-sh "wl-paste | satty -f -";}
+    // 冻结画面后选区截图，直接进剪贴板；wayfreeze 让选区过程画面不糊
+    Mod+Shift+S hotkey-overlay-title="选区截图 Select screenshot" { spawn-sh "wayfreeze & PID=$!; sleep 0.1; grim -g \"$(slurp)\" - | wl-copy; kill $PID"; }
+    // 选区截图并打开标注工具
+    Alt+Ctrl+S  hotkey-overlay-title="截图标注 Annotate screenshot" { spawn-sh "mark-shot"; }
 
     Ctrl+Alt+Delete hotkey-overlay-title="电源菜单 Powermenu" { spawn "wlogout"; }
     // Powers off the monitors. To turn them back on, do any input like
 
     // moving the mouse or pressing any other key.
-    Mod+Alt+P  hotkey-overlay-title="休眠 Turn off monitors" { spawn-sh "niri msg action power-off-monitors && hyprlock -c ~/.config/niri/hyprlock.conf && systemctl suspend"; }
+    // 熄屏 + 休眠。不在这里手动调锁屏：systemctl suspend 会触发 swayidle 的
+    // before-sleep 钩子去锁（LOCK_GRACE_TIMEOUT=0，无宽限）。
+    // 老版本的写法是 `hyprlock && systemctl suspend`，而 hyprlock 是阻塞的，
+    // 等于要等你解锁之后才休眠。
+    Mod+Alt+P  hotkey-overlay-title="休眠 Turn off monitors" { spawn-sh "niri msg action power-off-monitors && systemctl suspend"; }
 
     Mod+Shift+E    hotkey-overlay-title="退出桌面"    { quit; }
     Mod+Ctrl+Shift+Alt+R hotkey-overlay-title="重载配置" {

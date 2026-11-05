@@ -1,6 +1,6 @@
 {
     "label" : "lock",
-    "action" : "gtklock",
+    "action" : "qs-lock",
     "text" : "Lock",
     "keybind" : "l"
 }

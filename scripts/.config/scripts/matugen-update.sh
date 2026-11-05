@@ -63,7 +63,10 @@ if [ -z "$WALLPAPER" ] || [ ! -f "$WALLPAPER" ]; then
     notify-send "Matugen Error" "无法找到壁纸路径。"
     exit 1
 fi
-ln -sf "$WALLPAPER" "$HOME/.cache/.current_wallpaper"
+# 当前壁纸软链：全仓库统一用 ~/.cache/current_wallpaper（**不带点**）。
+# 这个名字是 quickshell 锁屏组件（lockscreen/shell.qml）和安装器的读取约定，
+# 照上游仓库的写法；改名时这几处必须一起改，否则锁屏会读不到壁纸。
+ln -sf "$WALLPAPER" "$HOME/.cache/current_wallpaper"
 
 # --- 4. [智能缓存] 哈希化与选择性转换 ---
 # 利用 MD5 生成该路径独一无二的缓存文件名
@@ -106,7 +109,11 @@ fi
 
 # --- 5. 读取策略与模式 ---
 if [ -f "$TYPE_FILE" ]; then STRATEGY=$(cat "$TYPE_FILE"); else STRATEGY="scheme-tonal-spot"; fi
-if [ -f "$MODE_FILE" ]; then MODE=$(cat "$MODE_FILE"); else MODE="dark"; fi
+# 明暗基调以 mode 文件为准（matugen-select-type.sh 写的），缺失时默认 light。
+# 默认值必须是 light：全新安装或清了 ~/.cache 之后，第一次开机轮换壁纸会走这里，
+# 若默认 dark，就会把 dconf 的 color-scheme 悄悄改成 prefer-dark，整个系统进黑暗模式，
+# 用户却从没点过任何明暗开关。想切暗色：Mod+Alt+M → 选 dark，写回这个文件即可。
+if [ -f "$MODE_FILE" ]; then MODE=$(cat "$MODE_FILE"); else MODE="light"; fi
 
 # --- 6. 执行 Matugen ---
 if [ "$NO_INDEX" = true ]; then

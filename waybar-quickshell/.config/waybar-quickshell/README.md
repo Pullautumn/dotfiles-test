@@ -94,7 +94,8 @@ switch-waybar.sh status      # 看当前样式和后台状态
    `switch-waybar.sh restart`。
 3. `custom/arch` 中键原本打开 Quickshell 的 `wallpaper-selector`（依赖 `theme-gen`/`wallpaper-manager`），
    本仓库不用那套，直接 exec `waypaper`。
-4. 弹窗里的锁屏动作（电源菜单、idle-warning）改指向 `hyprlock`，与 `Mod+Alt+L` 保持一致。
+4. 弹窗里的锁屏动作（电源菜单、idle-warning、`custom/lock` 按钮）统一指向 `qs-lock`，
+   与 `Mod+Alt+L` 保持一致。
 
 ## 故障排除
 

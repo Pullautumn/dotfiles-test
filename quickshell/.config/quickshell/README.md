@@ -15,8 +15,12 @@
 >    三个被共享的 QML 组件（`I18nContext` / `AuroraBackground` / `GlowOrb`）同理，各目录是实体副本。
 >    **注意**：QML 的 JS 脚本导入**不能用 `../`**，失败时 Quickshell 只会报
 >    `Script qrc:/qs-blackhole unavailable`，所以别把 `./Theme.js` 改成 `../Commons/Theme.js`。
-> 3. **没有 `qs-lock`**：锁屏统一用 `hyprlock -c ~/.config/niri/hyprlock.conf`，
->    电源菜单和 idle-warning 里的锁屏动作已改指向它。
+> 3. **锁屏用本包的 `lockscreen` 组件**：入口是 `~/.local/bin/qs-lock`（`Mod+Alt+L`、
+>    空闲超时、电源菜单、idle-warning、状态栏按钮全部指向它）。
+>    它绕过 `qs-popup` 直接起 `quickshell -p lockscreen`，所以**自己**会做一次
+>    `Theme.js` 同步，不依赖上面的 `ensure_qml_assets`。
+>    认证走 `Quickshell.Services.Pam`，PAM service 是 `/etc/pam.d/qs-lock`
+>    （装了 howdy 时另加 `qs-lock-face`），由安装器的 `setup_qs_lock_pam` 创建。
 > 4. **壁纸选择器不用本包的 `wallpaper-selector`**：壁纸仍由 `waypaper` 管（`post_command` 会触发
 >    `matugen-update.sh`），`qs-popup wallpaper` 直接 exec `waypaper`。
 > 5. **通知守护进程不随开机启动**：`qs-notifications.service` 和 `swaync` 抢

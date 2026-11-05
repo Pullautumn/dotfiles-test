@@ -17,7 +17,7 @@
 
 | 快捷键 | 动作 | 命令 |
 |---|---|---|
-| `l` | 锁定 | `gtklock` |
+| `l` | 锁定 | `qs-lock` |
 | `h` | 休眠 | `systemctl hibernate` |
 | `e` | 注销 | `niri msg action quit -s` |
 | `s` | 关机 | `systemctl poweroff` |

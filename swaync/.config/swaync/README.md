@@ -39,7 +39,7 @@
 | 投屏 | `gnome-network-displays` |
 | 文档 / 设置 | `kitty bash -i -c 'Docs'` / `'Settings'` |
 | 系统监视器 | `missioncenter` |
-| 锁定 | `gtklock` |
+| 锁定 | `qs-lock` |
 | 重启 / 关机 | `reboot` / `shutdown now` |
 
 其中 `missioncenter`、`gnome-network-displays` 属于可选软件，没装的话点了没反应；`Docs` / `Settings` 是 shell 别名，需要 zsh 配置里定义过。

@@ -86,6 +86,10 @@ tooltip label {
     color: @error;
 }
 
+#custom-wfrec.paused {
+    color: @tertiary;
+}
+
 #custom-screenshot,
 #custom-wfrec,
 #custom-actions,

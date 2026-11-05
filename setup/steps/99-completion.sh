@@ -14,8 +14,8 @@ show_completion() {
     echo -e "   ${CYAN}1.${NC} 重启系统"
 
     local step=2
-    if systemctl is-enabled ly@tty1 &>/dev/null; then
-        echo -e "   ${CYAN}${step}.${NC} ly 会接管 tty1，登录后自动进入 niri"
+    if systemctl is-enabled sddm &>/dev/null; then
+        echo -e "   ${CYAN}${step}.${NC} SDDM 会接管登录，输密码后自动进入 niri（主题 lunar-glass）"
         step=$((step + 1))
     else
         echo -e "   ${CYAN}${step}.${NC} 没有显示管理器：登录 TTY 后执行 ${YELLOW}niri-session${NC}"
@@ -43,8 +43,17 @@ show_completion() {
     # 成功完成后清空进度，下次运行是全新安装
     rm -f "$STATE_FILE"
 
-    if [[ "${NO_REBOOT:-false}" == "true" ]]; then
-        echo -e "${YELLOW}>>> 已跳过重启（--no-reboot），请手动执行 reboot${NC}"
+    # 主动要求不重启：--no-reboot，或 --yes 无人值守（无人确认的倒计时等于强制重启）
+    if [[ "${NO_REBOOT:-false}" == "true" || "${ASSUME_YES:-false}" == "true" ]]; then
+        echo -e "${YELLOW}>>> 已跳过自动重启（--no-reboot / --yes）${NC}"
+        echo -e "   请手动执行： ${YELLOW}reboot${NC}"
+        echo ""
+        return 0
+    fi
+
+    # 没有可交互终端（管道、CI、< /dev/null）时倒计时毫无意义：read 会立即 EOF 空转十次
+    if ! _tty_ok; then
+        echo -e "${YELLOW}>>> 非交互环境，跳过自动重启。请手动执行： ${YELLOW}reboot${NC}"
         echo ""
         return 0
     fi
@@ -56,7 +65,7 @@ show_completion() {
     for i in {10..1}; do
         echo -ne "\r   ${DIM}Auto-rebooting in ${i}s... (Press 'n' to cancel)${NC}"
 
-        if read -t 1 -n 1 input 2>/dev/null; then
+        if read -t 1 -n 1 input < /dev/tty 2>/dev/null; then
             if [[ "$input" == "n" || "$input" == "N" ]]; then
                 echo -e "\n\n   ${BLUE}>>> Reboot cancelled.${NC}"
                 return 0

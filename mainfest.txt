@@ -1,12 +1,14 @@
 niri:~/.config/niri
 waybar:~/.config/waybar
+waybar-niri-Win11Like:~/.config/waybar-niri-Win11Like
+waybar-quickshell:~/.config/waybar-quickshell
+quickshell:~/.config/quickshell
+systemd:~/.config/systemd/user
 fuzzel:~/.config/fuzzel
 rofi:~/.config/rofi
 wlogout:~/.config/wlogout
 mako:~/.config/mako
 swaync:~/.config/swaync
-gtklock:~/.config/gtklock
-swaylock:~/.config/swaylock
 kitty:~/.config/kitty
 starship:~/.config/starship
 zsh:~/.config/zsh
@@ -27,8 +29,7 @@ matugen:~/.config/matugen
 scripts:~/.config/scripts
 waypaper:~/.config/waypaper
 xdg-desktop-portal:~/.config/xdg-desktop-portal
-satty:~/.config/satty
-tlpui:~/.config/tlpui
+# tlpui:~/.config/tlpui   # 目录保留，但不在 STOW_PACKAGES 里，不部署
 local-bin:~/.local/bin
 local-share-applications:~/.local/share/applications
 local-share-fcitx5:~/.local/share/fcitx5

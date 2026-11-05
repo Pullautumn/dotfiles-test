@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# toggle-wlsunset —— 护眼模式（夜间色温）开关
+#
+# 用法:
+#   toggle-wlsunset on|off|toggle|status      不带参数 = toggle
+#
+# 调用方:
+#   niri 的 Mod+F9
+#   waybar-niri-Win11Like 的 custom/ddcutil-day 右键
+#
+# 为什么是「起进程 / 杀进程」而不是改 gsettings:
+#   wlsunset 走 wlroots 的 wlr-gamma-control 协议，把色温直接推给合成器，
+#   不碰 ICC、不碰 colord，进程一退色温立刻复原。所以「关闭」= pkill，
+#   没有任何需要还原的残留状态。
+# ==============================================================================
+
+set -uo pipefail
+
+# ---- 可调参数 ----------------------------------------------------------------
+# 色温区间（K，越低越黄）：白天用 TEMP_HIGH，夜间用 TEMP_LOW
+TEMP_LOW=4000
+TEMP_HIGH=6500
+# 日出 / 日落时间（24 小时制）。想改成按经纬度算，把 -S/-s 换成：
+#   -l <纬度> -L <经度> -t "${TEMP_LOW}:${TEMP_HIGH}"
+SUNRISE="07:00"
+SUNSET="19:00"
+# -----------------------------------------------------------------------------
+
+is_running() { pgrep -x wlsunset >/dev/null 2>&1; }
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 || return 0
+    notify-send -a "护眼模式" -t 2000 "护眼模式" "$1"
+}
+
+start() {
+    if is_running; then
+        echo "已经在运行"
+        return 0
+    fi
+    if ! command -v wlsunset >/dev/null 2>&1; then
+        notify "wlsunset 未安装（pacman -S wlsunset）"
+        return 1
+    fi
+    # setsid -f：脱离当前会话，spawn 的父进程退出后 wlsunset 继续活着
+    setsid -f wlsunset -t "${TEMP_LOW}:${TEMP_HIGH}" -S "$SUNRISE" -s "$SUNSET" \
+        >/dev/null 2>&1
+    sleep 0.3
+    if is_running; then
+        notify "已开启（夜间 ${TEMP_LOW}K）"
+    else
+        notify "启动失败，确认显示器支持 gamma 调节"
+        return 1
+    fi
+}
+
+stop() {
+    if ! is_running; then
+        echo "本来就没在运行"
+        return 0
+    fi
+    pkill -x wlsunset
+    sleep 0.2
+    if is_running; then
+        notify "关闭失败"
+        return 1
+    fi
+    notify "已关闭（恢复正常色温）"
+}
+
+case "${1:-toggle}" in
+    on|start)  start ;;
+    off|stop)  stop ;;
+    toggle)    if is_running; then stop; else start; fi ;;
+    status)    if is_running; then echo "on"; else echo "off"; fi ;;
+    -h|--help|help)
+        sed -n '3,15p' "$0" | sed 's/^# \{0,1\}//'
+        ;;
+    *)
+        echo "用法: $(basename "$0") [on|off|toggle|status]" >&2
+        exit 2
+        ;;
+esac

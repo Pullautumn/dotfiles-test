@@ -47,9 +47,10 @@ LEGACY_HOME="/home/pullautumn"
 # Stow Packages
 # ==============================================================================
 # 顶层目录即 stow 包。以下几个不是包：
-#   setup/      安装器本体
-#   wallpaper/  壁纸，单独链接到 ~/Pictures/Wallpapers
-#   wallpapers/ 头像等杂项资源，不部署
+#   setup/       安装器本体
+#   wallpaper/   壁纸，单独链接到 ~/Pictures/Wallpapers
+#   wallpapers/  头像等杂项资源，不部署
+#   sddm-theme/  SDDM 主题源文件，由 setup_sddm 拷到 /usr/share/sddm/themes/lunar-glass
 # waybar-quickshell 是备选状态栏样式，部署到 ~/.config/waybar-quickshell，
 # 与主 waybar 各自独立，用 Mod+F2 / Mod+F3 / Mod+F4 随时切换。
 # 它依赖 quickshell 包（弹窗/面板全在 ~/.config/quickshell 里），两者要一起装。
@@ -58,13 +59,13 @@ STOW_PACKAGES=(
     quickshell
     systemd
     fuzzel rofi wlogout
-    mako swaync gtklock swaylock
+    mako swaync
     kitty starship zsh zshenv
     nvim yazi mpv obs-studio
     Thunar btop fastfetch
     fcitx5 fontconfig environment.d gtk-3.0 mimeapps
     matugen scripts local-bin
-    waypaper xdg-desktop-portal satty
+    waypaper xdg-desktop-portal
     local-share-applications local-share-fcitx5
 )
 
@@ -78,8 +79,10 @@ PKG_GROUPS[portal]="xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal
 PKG_GROUPS[bar]="waybar"
 PKG_GROUPS[launcher]="fuzzel rofi"
 PKG_GROUPS[notify]="swaync libnotify"
-PKG_GROUPS[lock]="gtklock hyprlock wlogout"
-PKG_GROUPS[screenshot]="grim slurp satty wf-recorder imv"
+# 锁屏用 quickshell 的 lockscreen 组件（qs-lock），不需要单独的锁屏包；
+# 这里只剩电源菜单 wlogout。
+PKG_GROUPS[lock]="wlogout"
+PKG_GROUPS[screenshot]="grim slurp wayfreeze wf-recorder imv ffmpeg"
 PKG_GROUPS[clipboard]="cliphist wl-clipboard xclip"
 PKG_GROUPS[terminal]="kitty starship"
 PKG_GROUPS[shell]="zsh atuin zoxide fzf thefuck fnm"
@@ -100,8 +103,8 @@ PKG_GROUP_NAMES=(
     "bar:状态栏 (waybar)"
     "launcher:启动器 (fuzzel/rofi)"
     "notify:通知 (swaync)"
-    "lock:锁屏与电源菜单 (gtklock/hyprlock/wlogout)"
-    "screenshot:截图与录屏 (grim/satty/wf-recorder)"
+    "lock:电源菜单 (wlogout；锁屏在 quickshell 里)"
+    "screenshot:截图与录屏 (grim/wayfreeze/wf-recorder)"
     "clipboard:剪贴板 (cliphist)"
     "terminal:终端与提示符 (kitty/starship)"
     "shell:Shell 增强 (zsh/atuin/zoxide)"
@@ -130,6 +133,10 @@ AUR_PACKAGES=(
     ttf-lxgw-wenkai-screen
     niri-sidebar-git
     wl-screenrec-git
+    # 截图：mark-shot 做选区标注，wayscrollshot-bin 做滚动长截图
+    # （wayfreeze 在官方仓库，随 PKG_GROUPS[screenshot] 装）
+    mark-shot
+    wayscrollshot-bin
     # waybar-quickshell 样式的后端：quickshell 本体 + Python 依赖管理器
     quickshell
     uv

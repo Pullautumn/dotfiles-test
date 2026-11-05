@@ -143,7 +143,7 @@ ShellRoot {
     // 延迟启动锁屏（在后台执行，idle-warning 退出后才会真正启动）
     Process {
         id: delayedLockProcess
-        command: ["bash", "-c", "sleep 0.3 && hyprlock -c ~/.config/niri/hyprlock.conf"]
+        command: ["bash", "-c", "sleep 0.3 && LOCK_GRACE_TIMEOUT=0 qs-lock"]
     }
 
     // Fullscreen overlay

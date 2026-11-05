@@ -152,6 +152,16 @@ clone_dotfiles() {
         return
     fi
 
+    # 目录存在但不是 git 仓库：非空则拒绝处理，避免掉进下面的重试逻辑被 rm -rf 清掉
+    if [[ -d "$DOTFILES_DIR" ]]; then
+        if [[ -n "$(ls -A "$DOTFILES_DIR" 2>/dev/null)" ]]; then
+            print_fail "$DOTFILES_DIR 已存在但不是 git 仓库，且非空"
+            print_info "请先手动移走它（如 mv ~/.dotfiles ~/.dotfiles.bak）后重跑"
+            exit 1
+        fi
+        rmdir "$DOTFILES_DIR" 2>/dev/null || true
+    fi
+
     if is_done "clone_dotfiles"; then
         print_skip "Clone dotfiles (already done)"
         return
@@ -164,6 +174,11 @@ clone_dotfiles() {
 
     local max_retries=3
     local retry=0
+    # 记录 clone 前该目录是否存在，重试清理时只删本次新建的半成品
+    local dst_preexisted=false
+    if [[ -e "$DOTFILES_DIR" ]]; then
+        dst_preexisted=true
+    fi
 
     while [[ $retry -lt $max_retries ]]; do
         retry=$((retry + 1))
@@ -177,7 +192,10 @@ clone_dotfiles() {
             return 0
         fi
 
-        rm -rf "$DOTFILES_DIR" 2>/dev/null || true
+        # 只清理本次 clone 留下的半成品，绝不碰用户原有目录
+        if [[ "$dst_preexisted" == "false" ]]; then
+            rm -rf "$DOTFILES_DIR" 2>/dev/null || true
+        fi
         if [[ $retry -lt $max_retries ]]; then
             sleep 3
         fi

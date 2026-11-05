@@ -43,3 +43,12 @@ layout {
         inactive-color "#11111b"
     }
 }
+
+// 全局模糊强度（niri >= 26.04 的 ext-background-effect 才认这个块）
+// 参数与 shorin-niri 一致：offset 3 是 niri 默认值，想更明显就调到 7.0
+// 注意必须写在 layout {} 外面，写进去会解析报错
+blur {
+    passes 3
+    offset 3
+    noise 0.02
+}

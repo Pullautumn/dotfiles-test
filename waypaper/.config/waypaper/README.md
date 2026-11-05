@@ -50,7 +50,11 @@ waypaper --random        # 随机换一张（Mod+F10）
 waypaper --wallpaper ~/Pictures/Wallpapers/xxx.jpg   # 直接指定
 ```
 
-niri 的 `Mod+Alt+W` 打开界面，`Mod+F10` 随机换，开机时 `autostart.kdl` 里还会 `sleep 1 && waypaper --random`。
+niri 的 `Mod+Alt+W` 打开界面，`Mod+F10` 随机换。
+
+**开机那次**由 `~/.config/scripts/wallpaper-rotate.sh boot` 决定：开关开着（`on`）就走 `waypaper --random`，关掉（`off`）就完全绕开 waypaper、只让 `awww restore` 把上次那张贴回去，不重算配色。开关用 `Mod+Ctrl+F10` 切。
+
+⚠️ 所以**别用 `waypaper --restore` 来做「开机固定壁纸」**：`--restore` 一样会跑上面的 `post_command`，等于每次开机照样重算一遍配色和模糊背景。
 
 ## 和 matugen 的关系
 

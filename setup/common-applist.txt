@@ -34,10 +34,13 @@ baobab                                   # 磁盘占用分析
 gnome-disk-utility                       # 磁盘分区管理
 gnome-font-viewer                        # 字体查看器
 nwg-look                                 # GTK 主题切换
+AUR:adw-gtk-theme                        # adw-gtk3 / adw-gtk3-dark，matugen 深浅切换要写这两个主题名
+AUR:nirimod-git                          # niri 图形化配置编辑器（圆角/模糊/动画/键位/输出）
 flatseal                                 # Flatpak 权限管理
 bazaar                                   # Flatpak 应用商店（图形界面）
 ddcutil                                  # DDC/CI 外接显示器亮度调节
 AUR:ddcutil-service                      # ddcutil 常驻服务（waybar 亮度模块用）
+AUR:howdy                                # 人脸识别（锁屏用）。没有摄像头 / 只有普通 RGB 头就别选，误识率高
 
 
 # --- 媒体与创作 ---------------------------------------------------------------

@@ -125,7 +125,7 @@ setup_mpv() {
     fi
 
     echo ""
-    echo -e "   ${WHITE}MPV 配置与脚本选项由 mpv 包提供${NC}"
+    echo -e "   ${WHITE}MPV 配置、4 个 Lua 脚本与图标字体由 dotfiles 的 mpv 包提供${NC}"
     echo -e "   ${DIM}可选下载 Anime4K 着色器用于动画超分。${NC}"
     echo ""
 

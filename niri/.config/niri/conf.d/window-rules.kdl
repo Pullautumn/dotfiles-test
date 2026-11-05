@@ -41,7 +41,6 @@ window-rule {
     // - host Firefox (app-id is "firefox")
     // - Flatpak Firefox (app-id is "org.mozilla.firefox")
     match app-id="wechat" title="^设置$"
-    match app-id="com.gabm.satty"
     match app-id="media_info"
     match app-id="video2gif"
     match app-id="floating-term"
@@ -65,7 +64,7 @@ window-rule {
     match title="日历"
     match title="重命名"
     match app-id="btrfs-assistant"
-    match app-id="markpix"
+    match app-id="mark-shot"
     match title="Steam 设置" 
     match title="另存为"
     match app-id="better_control.py"
@@ -142,11 +141,60 @@ window-rule {
     // block-out-from "screencast"
 }
 
-// Example: enable rounded corners for all windows.
-// (This example rule is commented out with a "/-" in front.)
+// ==================== 全局窗口外观（圆角 + 不透明 + 模糊）====================
+//
+// 这四项必须写在同一条无 match 的 window-rule 里，不要拆成多条：
+// NiriMod（图形化配置编辑器）的「全局」设置只认最后一条无 match 的规则
+// （window_effects.py:_global_window_rule 用 reversed 取第一条），
+// 一旦拆成两条，GUI 里改圆角会写进另一条，界面上显示的值和实际生效的值对不上。
+//
+// geometry-corner-radius 6 + clip-to-geometry true：所有窗口圆角 6px
+// opacity 0.97：让窗口透出 3%，否则窗口完全不透明时模糊被挡在后面看不见
+// xray true：只模糊壁纸、算一次后复用，几乎零开销（shorin-niri 的做法）
+//
+// 需要 niri >= 26.04。低于该版本写了 background-effect 会启动失败。
 window-rule {
     geometry-corner-radius 6
     clip-to-geometry true
+    opacity 0.97
+    background-effect {
+        blur true
+        xray true
+    }
+
+    // 应用内右键菜单 / 下拉框。这里用 xray false：
+    // 菜单背后是应用自己的窗口内容，模糊真实内容才对，xray true 会误取壁纸。
+    // opacity 0.92 同样是为了让模糊透出来，菜单自身不透明的话 blur 等于白加。
+    popups {
+        opacity 0.92
+        background-effect {
+            blur true
+            xray false
+        }
+    }
+}
+
+// 状态栏。bar 永远压在壁纸上方，xray true 效果相同但更省。
+layer-rule {
+    match namespace="^waybar$"
+    background-effect {
+        xray true
+        blur true
+    }
+}
+
+// quickshell 卡片式弹窗。圆角 20 = Theme.radiusXL（matugen/templates/quickshell-theme.js）。
+// 全部组件的 shadowPadding 都是 0，layer 尺寸等于卡片尺寸，所以圆角裁剪不会切到内容。
+// 刻意排除：
+//   quickshell-welcome / idle-warning —— 四边 anchors 全屏，加圆角会切掉屏幕四角并糊整屏
+//   各种 -bg 全屏捕获层 —— 同上
+layer-rule {
+    match namespace="^(quickshell-(bt|volume|recorder|media|screenshot-toolbox|clipboard|launcher|wifi|calendar|weather)|qs-(window-switcher|close-confirm|qr-viewer|wallpaper-selector|power-menu|color-viewer|todo|notifications|notification-popup))$"
+    geometry-corner-radius 20
+    background-effect {
+        xray false
+        blur true
+    }
 }
 
 

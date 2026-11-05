@@ -48,7 +48,6 @@ Material You 配色生成器。从当前壁纸提取主色，按模板渲染出�
 | GTK 图标 | `~/.cache/matugen/recoloricons.sh`（重着色脚本） |
 | KDE 配色 | `~/.local/share/color-schemes/Matugen.colors` |
 | neovim | `~/.config/nvim/generated.lua` |
-| swaylock | `~/.config/swaylock/config` |
 | starship | `templates/starship-colors.toml`（需手动合并） |
 | pywalfox | `~/.cache/wal/colors.json`（给 Firefox 用） |
 

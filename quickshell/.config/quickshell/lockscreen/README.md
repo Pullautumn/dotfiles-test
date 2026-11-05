@@ -22,6 +22,17 @@
 
 ### 1. `/etc/pam.d/qs-lock-face` - 人脸识别 + 密码
 
+> 安装器的 `setup_qs_lock_pam` 会自动生成这个文件，并且会先探测本机 howdy 用哪种
+> PAM 模块：有 `pam_howdy.so` 就用它，只有 `howdy/pam.py` 就写
+> `pam_python.so /lib/security/howdy/pam.py`。下面手动写的话，先确认模块在不在：
+>
+> ```bash
+> ls -l /usr/lib/security/pam_howdy.so /lib/security/howdy/pam.py
+> ```
+>
+> 两个都不存在时（howdy 装了但打包不完整），这一行怎么都对，人脸永远失败，
+> 而界面只显示「识别失败」——这是最容易踩的坑。
+
 ```bash
 sudo tee /etc/pam.d/qs-lock-face << 'EOF'
 #%PAM-1.0

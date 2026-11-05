@@ -15,18 +15,25 @@
 | `matugen-restore.sh` | 系统级还原：清图标缓存、按缓存重新生成整套配色 | 手动 |
 | `niri_set_overview_blur_dark_bg.sh` | 生成 overview 用的模糊 + 变暗背景 | waypaper 的 `post_command`（紧跟在 matugen-update 后） |
 | `niri_auto_blur_bg.sh` | 自动跟随当前壁纸生成模糊背景 | `niri/conf.d/autostart.kdl` 开机启动 |
-| `generate_hyprlock_wallpaper.sh` | 为 hyprlock 生成带模糊的锁屏背景 | 手动 / 配合锁屏配置 |
 | `random-anime-wallpaper.sh` | 从在线 API 随机下载动漫壁纸并设为壁纸 | `Mod+Shift+F10` |
+| `wallpaper-rotate.sh` | 开机「自动随机换壁纸」的开关，状态存 `~/.cache/wallpaper-auto-rotate` | `niri/conf.d/autostart.kdl` 开机启动、`Mod+Ctrl+F10`、手动 |
 
 ## matugen-update.sh
 
 ```bash
 ~/.config/scripts/matugen-update.sh                       # 用当前壁纸
 ~/.config/scripts/matugen-update.sh /path/to/wall.jpg     # 指定图片
-~/.config/scripts/matugen-update.sh -t scheme-content -m dark
+~/.config/scripts/matugen-update.sh -n                    # 终端里交互式挑主色
 ```
 
-支持 `-t` 配色方案、`-m` 明暗模式，以及 `--source-color-index` 指定从图片里取第几个主色。
+这个脚本**只接受 `-n` 和壁纸路径**，没有 `-t` / `-m` 选项。配色方案（`scheme-*`）、
+主色 index 和明暗都由 `~/.cache/matugen-strategy/` 下的状态文件决定，写这些文件的正规入口是
+`Mod+Alt+M`（`matugen-select-type.sh`）。
+
+明暗的默认值是 **`light`**（`mode` 文件缺失时），全新安装从亮色起步。
+这一项不只是配色：light 会把 dconf 的 `color-scheme` 写成 `prefer-light`，dark 写成
+`prefer-dark`——改的是系统「白色 / 黑暗模式」总开关，持久生效，只有 `matugen-restore.sh`
+会写回 `default`。要换明暗走菜单，别手撕状态文件。
 
 ## matugen-select-type.sh
 
@@ -43,6 +50,32 @@
 ```
 
 从 `https://t.alcy.cc/pc/` 拉一张随机动漫图，存到壁纸目录后设为壁纸，再调 `matugen-update.sh` 换色。
+
+## wallpaper-rotate.sh
+
+```bash
+~/.config/scripts/wallpaper-rotate.sh status    # 看当前是 on 还是 off
+~/.config/scripts/wallpaper-rotate.sh toggle    # 翻转（等同于 Mod+Ctrl+F10）
+~/.config/scripts/wallpaper-rotate.sh off       # 关掉开机随机换图
+~/.config/scripts/wallpaper-rotate.sh on        # 恢复开机随机换图
+```
+
+状态就是 `~/.cache/wallpaper-auto-rotate` 里的一个词。**文件不存在按 `on` 处理**，所以升级完行为不会变。
+
+两个状态做的事完全不同：
+
+| 状态 | 开机执行 | 实际效果 |
+|---|---|---|
+| `on` | `waypaper --random` | 换新图 → `post_command` 跑 matugen 换全套配色 → 重算总览模糊 |
+| `off` | `awww restore` | 只把上次那张贴回屏幕，不换图、不换色、不重算模糊，零计算 |
+
+`off` 为什么要留一条 `awww` 命令：`awww-daemon` 每次开机是空白的，不记得上次画了哪张，一条命令都不跑就是黑屏。`awww restore` 读的是 daemon 自己 `~/.cache/awww/` 里的缓存，不经过 waypaper，所以不会触发 matugen。
+
+⚠️ **不要用 `waypaper --restore` 来实现「固定壁纸」**：waypaper 不管 `--random` 还是 `--restore` 都会跑 `post_command`，等于照样换色、照样重算模糊，那就不是「不动」了。
+
+`off` 的模式下 `niri_auto_blur_bg.sh` 依然会启动，但当前壁纸没变，它的模糊图缓存命中，直接贴图走人，不会跑 `magick`。
+
+开关只影响**下次开机**，不会立刻撤回当前这张。手动 `Mod+F10` 随机也不受开关影响。
 
 ## 和 waypaper 的关系
 

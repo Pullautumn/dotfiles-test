@@ -63,7 +63,7 @@ dummywall {
     children:                    [ "mode-switcher" , "inputbar" ];
     background-color:            transparent;
     background-image:            url("~/.config/rofi/images/模糊10_rofi.png", height);
-    // background-image:            url("~/.cache/.current_wallpaper", height);
+    // background-image:            url("~/.cache/current_wallpaper", height);
 }
 
 

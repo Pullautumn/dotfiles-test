@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# QuickShell 锁屏启动器
+# 用法: qs-lock [--face]
+#
+# 环境变量:
+#   LOCK_GRACE_TIMEOUT   grace period 秒数（0 = 立刻要密码，不写 = 组件默认 5）
+#   LOCK_FACE_ON_START   1/true/yes/on → 进真锁屏后自动触发人脸识别
+#
+# 为什么需要这个启动器、而不是直接 `quickshell -p ~/.config/quickshell/lockscreen`：
+#
+#   QML 的 JS 脚本导入**不能**用 ../ —— Quickshell 会把加载失败的脚本导入整体
+#   替换成 qrc:/qs-blackhole 占位，报错只说「占位不可用」，不说是哪个文件。
+#   所以每个组件目录必须自带一份 ./Theme.js 和 ./ScreenModel.js。
+#
+#   平时这些副本由 qs-popup 的 ensure_qml_assets() 维护，但锁屏是独立进程、
+#   绕过 qs-popup 直接起 quickshell，所以这里得自己同步一次。
+#   少了这一步，锁屏起来就是白屏 + "Script qrc:/qs-blackhole unavailable"。
+
+set -u
+
+QS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell"
+LOCK_DIR="$QS_DIR/lockscreen"
+
+# ------------------------------------------------------------------------------
+# 复用 qs-popup 的思路：基座文件缺失/写坏时从 .Default 补，再按 mtime 刷到组件目录
+# ------------------------------------------------------------------------------
+sync_qml_assets() {
+    local theme="$QS_DIR/Commons/Theme.js"
+    local fallback="$QS_DIR/Commons/Theme.js.Default"
+    local screen_model="$QS_DIR/Commons/ScreenModel.js"
+
+    if [[ ! -f "$theme" ]] || ! grep -q 'function alpha' "$theme" 2>/dev/null; then
+        [[ -f "$fallback" ]] || return 0
+        cp -f "$fallback" "$theme" 2>/dev/null || return 0
+    fi
+
+    [[ -d "$LOCK_DIR" ]] || return 0
+
+    if [[ ! -f "$LOCK_DIR/Theme.js" ]] || [[ "$theme" -nt "$LOCK_DIR/Theme.js" ]]; then
+        cp -f "$theme" "$LOCK_DIR/Theme.js" 2>/dev/null || true
+    fi
+    if [[ -f "$screen_model" ]] \
+       && { [[ ! -f "$LOCK_DIR/ScreenModel.js" ]] || [[ "$screen_model" -nt "$LOCK_DIR/ScreenModel.js" ]]; }; then
+        cp -f "$screen_model" "$LOCK_DIR/ScreenModel.js" 2>/dev/null || true
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# 参数与环境变量
+# ------------------------------------------------------------------------------
+face_on_start=0
+case "${1:-}" in
+    --face|--face-on-start)
+        face_on_start=1
+        ;;
+    "")
+        ;;
+    *)
+        echo "Usage: qs-lock [--face]" >&2
+        exit 2
+        ;;
+esac
+
+case "${LOCK_FACE_ON_START:-}" in
+    1|true|TRUE|yes|YES|on|ON)
+        face_on_start=1
+        ;;
+esac
+
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+face_trigger_file="${runtime_dir}/qs-lock-face-trigger"
+
+# ------------------------------------------------------------------------------
+# 防止重复启动：已经在锁屏就只处理“请求人脸”这一种情况
+# ------------------------------------------------------------------------------
+lockscreen_running() {
+    pgrep -x quickshell >/dev/null 2>&1 \
+        && pgrep -xaf quickshell 2>/dev/null | grep -q 'lockscreen'
+}
+
+signal_face_auth() {
+    mkdir -p "$runtime_dir" 2>/dev/null
+    printf '%s wake\n' "$(date +%s%3N)" > "$face_trigger_file"
+}
+
+if lockscreen_running; then
+    if (( face_on_start )); then
+        signal_face_auth
+        echo "Face auth requested"
+        exit 0
+    fi
+    echo "Lockscreen already running"
+    exit 0
+fi
+
+if ! command -v quickshell >/dev/null 2>&1; then
+    command -v notify-send >/dev/null 2>&1 \
+        && notify-send -a "qs-lock" "锁屏启动失败" "找不到 quickshell 命令"
+    echo "qs-lock: quickshell not found" >&2
+    exit 1
+fi
+
+if [[ ! -f "$LOCK_DIR/shell.qml" ]]; then
+    command -v notify-send >/dev/null 2>&1 \
+        && notify-send -a "qs-lock" "锁屏启动失败" "缺少 $LOCK_DIR/shell.qml"
+    echo "qs-lock: $LOCK_DIR/shell.qml not found" >&2
+    exit 1
+fi
+
+sync_qml_assets
+
+mkdir -p "$runtime_dir" 2>/dev/null
+: > "$face_trigger_file"
+
+if (( face_on_start )); then
+    export LOCK_FACE_ON_START=1
+    export LOCK_GRACE_TIMEOUT="${LOCK_GRACE_TIMEOUT:-0}"
+fi
+
+exec quickshell -p "$LOCK_DIR"

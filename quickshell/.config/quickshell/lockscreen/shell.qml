@@ -613,7 +613,10 @@ ShellRoot {
      * @returns 包含脚本路径和所有输出名称的命令数组。
      */
     function buildScreenshotCommand() {
-        var args = [graceScreenshotScriptPath]
+        // 用 bash 显式解释，不依赖脚本自身的可执行位。
+        // 直接写 [path] 时，只要脚本丢了 +x（stow/拷贝/解压/换文件系统都可能丢），
+        // Qt 的 QProcess 只会报 "binary could not be found"，看不出真实原因。
+        var args = ["bash", graceScreenshotScriptPath]
         for (var i = 0; i < Quickshell.screens.length; i++) {
             if (Quickshell.screens[i] && Quickshell.screens[i].name) {
                 args.push(Quickshell.screens[i].name)

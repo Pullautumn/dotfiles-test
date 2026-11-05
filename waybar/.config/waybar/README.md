@@ -32,12 +32,12 @@
 |---|---|
 | `battery-status.sh` / `battery-tooltip.sh` | 电池状态文字与悬浮提示 |
 | `cliphist-fuzzel-img` | 带图片预览的剪贴板选择器（`Mod+Shift+V`） |
-| `power-screenshot.sh` | 截图 / 录屏的交互菜单 |
-| `screenrec` | 录屏状态控制 |
-| `wf-recorder-waybar.sh` / `wl-screenrec-waybar.sh` | 两种录屏后端，状态栏按钮调用 |
+| `screenshot.sh` | 选区截图，直接进剪贴板（`wayfreeze` 由 niri 键位负责，这里只 `grim`+`slurp`） |
+| `wf-recorder.sh` | 录屏主控：`waybar` 出状态 JSON、`start`/`stop`/`pause-toggle`/`settings` |
 | `switch-perf-mode.sh` | 切换性能模式（`power-profiles-daemon`） |
-| `longshot-sh/` | 长截图脚本组，与 `niri/scripts/` 里的那份同源 |
-| `stitch.py` | 长截图拼接 |
+
+截图模块三个鼠标键：左键调 `screenshot.sh`，中键调 `wayscrollshot`（滚动长截图），
+右键开 `qs-popup screenshot-toolbox`。录屏模块左键开关、中键暂停、右键开录制设置。
 
 ## 改完怎么生效
 

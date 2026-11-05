@@ -348,6 +348,14 @@ tooltip label {
     animation: wfrec-blink 1s ease-in-out infinite alternate;
 }
 
+/* 已暂停（脚本返回 class=paused 时） */
+#custom-wfrec.paused {
+    background-color: #fab387;
+    /* 暂停中：橙黄 */
+    color: #1e1e2e;
+    animation: none;
+}
+
 /* hover */
 #custom-wfrec:hover {
     background-color: #fab387;

@@ -27,11 +27,6 @@ input_path = '~/.config/matugen/templates/gtk-folder/recolor.sh'
 output_path = '~/.cache/matugen/recoloricons.sh'
 post_hook = 'bash ~/.cache/matugen/recoloricons.sh &'
 
-[templates.hyprlock]
-input_path = '~/.config/matugen/templates/hyprland-colors.conf'
-output_path = '~/.cache/matugen/hypr/colors.conf'
-pre_hook = 'mkdir -p ~/.cache/matugen/hypr/'
-
 [templates.kitty]
 input_path = '~/.config/matugen/templates/kitty-colors.conf'
 output_path = '~/.config/kitty/themes/matugen.conf'
@@ -128,10 +123,6 @@ output_path = '~/.local/share/fcitx5/themes/Matugen/theme.conf'
 #input_path = '~/.config/matugen/templates/niriswitcher-colors.css'
 #output_path = '~/.config/niriswitcher/style.css'
 #post_hook= 'pkill niriswitcher || true && niriswitcher & disown'
-
-#[templates.swaylock-effects]
-#input_path = '~/.config/matugen/templates/swaylock-colors'
-#output_path = '~/.config/swaylock/config'
 
 #[templates.neovim]
 #input_path = '~/.config/matugen/templates/neovim/template.lua'
