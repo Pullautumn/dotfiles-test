@@ -145,20 +145,20 @@
   "custom/screenshot": {
     "format": "",
     "tooltip-format": "左键：选区截图（复制到剪贴板）\n右键：打开截图工具箱\n中键：长截图（wayscrollshot）",
-    "on-click": "~/.config/waybar-niri-Win11Like/scripts/screenshot.sh",
+    "on-click": "~/.config/scripts/screenshot.sh",
     "on-click-right": "~/.local/bin/qs-popup screenshot-toolbox",
     "on-click-middle": "wayscrollshot"
   },
   //录屏 wf-recorder
   "custom/wfrec": {
-    "exec": "~/.config/waybar-niri-Win11Like/scripts/wf-recorder.sh waybar",
+    "exec": "~/.config/scripts/wf-recorder.sh waybar",
     "return-type": "json",
     "interval": 1,
     "signal": 9, // 与脚本里的 WAYBAR_SIG 对应
     "tooltip": true,
-    "on-click": "bash -c 'if ~/.config/waybar-niri-Win11Like/scripts/wf-recorder.sh is-active; then ~/.config/waybar-niri-Win11Like/scripts/wf-recorder.sh stop; else ~/.config/waybar-niri-Win11Like/scripts/wf-recorder.sh start; fi'", // 左键：开始/停止
-    "on-click-right": "~/.config/waybar-niri-Win11Like/scripts/wf-recorder.sh settings", // 右键：录制设置
-    "on-click-middle": "~/.config/waybar-niri-Win11Like/scripts/wf-recorder.sh pause-toggle"
+    "on-click": "bash -c 'if ~/.config/scripts/wf-recorder.sh is-active; then ~/.config/scripts/wf-recorder.sh stop; else ~/.config/scripts/wf-recorder.sh start; fi'", // 左键：开始/停止
+    "on-click-right": "~/.config/scripts/wf-recorder.sh settings", // 右键：录制设置
+    "on-click-middle": "~/.config/scripts/wf-recorder.sh pause-toggle"
   },
   //声音模块
   "group/audio": {

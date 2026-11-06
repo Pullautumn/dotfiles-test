@@ -89,7 +89,7 @@ ShellRoot {
     // ============ Processes ============
     Process {
         id: statusProc
-        command: ["bash", "-c", "~/.config/waybar-quickshell/scripts/wf-recorder.sh is-active && echo recording || echo idle"]
+        command: ["bash", "-c", "~/.config/scripts/wf-recorder.sh is-active && echo recording || echo idle"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.isRecording = text.trim() === "recording"
@@ -99,7 +99,7 @@ ShellRoot {
     }
     Process {
         id: durationProc
-        command: ["bash", "-c", "~/.config/waybar-quickshell/scripts/wf-recorder.sh waybar"]
+        command: ["bash", "-c", "~/.config/scripts/wf-recorder.sh waybar"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
@@ -133,22 +133,22 @@ ShellRoot {
     // Recording - 命令在后台运行，QuickShell 退出不影响
     Process {
         id: fullscreenProc
-        command: ["bash", "-c", "RECORD_MODE=full MENU_BACKEND=none setsid ~/.config/waybar-quickshell/scripts/wf-recorder.sh start &"]
+        command: ["bash", "-c", "RECORD_MODE=full MENU_BACKEND=none setsid ~/.config/scripts/wf-recorder.sh start &"]
         onExited: root.quitWithBlurDisabled()
     }
     Process {
         id: regionProc
-        command: ["bash", "-c", "setsid bash -lc 'sleep 0.15; RECORD_MODE=region MENU_BACKEND=none exec ~/.config/waybar-quickshell/scripts/wf-recorder.sh start' >/dev/null 2>&1 &"]
+        command: ["bash", "-c", "setsid bash -lc 'sleep 0.15; RECORD_MODE=region MENU_BACKEND=none exec ~/.config/scripts/wf-recorder.sh start' >/dev/null 2>&1 &"]
         onExited: root.quitWithBlurDisabled()
     }
     Process {
         id: gifMarkerProc
-        command: ["bash", "-c", "setsid bash -lc 'sleep 0.15; GIF_MODE=1 RECORD_MODE=region MENU_BACKEND=none exec ~/.config/waybar-quickshell/scripts/wf-recorder.sh start' >/dev/null 2>&1 &"]
+        command: ["bash", "-c", "setsid bash -lc 'sleep 0.15; GIF_MODE=1 RECORD_MODE=region MENU_BACKEND=none exec ~/.config/scripts/wf-recorder.sh start' >/dev/null 2>&1 &"]
         onExited: root.quitWithBlurDisabled()
     }
     Process {
         id: stopProc
-        command: ["bash", "-c", "~/.config/waybar-quickshell/scripts/wf-recorder.sh stop"]
+        command: ["bash", "-c", "~/.config/scripts/wf-recorder.sh stop"]
         onExited: {
             root.isRecording = false
             root.duration = "00:00"
@@ -157,7 +157,7 @@ ShellRoot {
     }
     Process {
         id: forceStopProc
-        command: ["bash", "-c", "pkill -9 wf-recorder 2>/dev/null || true; ~/.config/waybar-quickshell/scripts/wf-recorder.sh waybar >/dev/null"]
+        command: ["bash", "-c", "pkill -9 wf-recorder 2>/dev/null || true; ~/.config/scripts/wf-recorder.sh waybar >/dev/null"]
         onExited: {
             root.isRecording = false
             root.duration = "00:00"

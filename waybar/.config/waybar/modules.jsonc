@@ -27,21 +27,21 @@
     "custom/screenshot": {
         "format": "",
         "tooltip-format": "左键：选区截图（复制到剪贴板）\n右键：打开截图工具箱\n中键：长截图（wayscrollshot）",
-        "on-click": "~/.config/waybar/scripts/screenshot.sh",
+        "on-click": "~/.config/scripts/screenshot.sh",
         "on-click-right": "~/.local/bin/qs-popup screenshot-toolbox",
         "on-click-middle": "wayscrollshot"
     },
     //录屏 wf-recorder
     "custom/wfrec": {
         "format": "",
-        "exec": "~/.config/waybar/scripts/wf-recorder.sh waybar",
+        "exec": "~/.config/scripts/wf-recorder.sh waybar",
         "return-type": "json",
         "interval": 1,
         "signal": 9, // 与脚本里的 WAYBAR_SIG 对应
         "tooltip": true,
-        "on-click": "bash -c 'if ~/.config/waybar/scripts/wf-recorder.sh is-active; then ~/.config/waybar/scripts/wf-recorder.sh stop; else ~/.config/waybar/scripts/wf-recorder.sh start; fi'", // 左键：开始/停止
-        "on-click-right": "~/.config/waybar/scripts/wf-recorder.sh settings", // 右键：录制设置
-        "on-click-middle": "~/.config/waybar/scripts/wf-recorder.sh pause-toggle"
+        "on-click": "bash -c 'if ~/.config/scripts/wf-recorder.sh is-active; then ~/.config/scripts/wf-recorder.sh stop; else ~/.config/scripts/wf-recorder.sh start; fi'", // 左键：开始/停止
+        "on-click-right": "~/.config/scripts/wf-recorder.sh settings", // 右键：录制设置
+        "on-click-middle": "~/.config/scripts/wf-recorder.sh pause-toggle"
     },
     "custom/swayidle-toggle": {
         "exec": "bash -c 'if [[ -f /tmp/swayidle-disabled ]]; then echo -e \"☕\\n保持唤醒：屏幕常亮，不锁屏\"; else echo -e \"💤\\n允许休眠：5分钟后自动锁屏\"; fi'",

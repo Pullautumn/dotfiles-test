@@ -76,7 +76,6 @@
 | `niri-binds` | 读取 `binds.kdl` 生成快捷键说明 |
 | `niri-monitor-switch.sh` | 显示器模式切换：quick-settings 面板的后端（`list-json`/`set`/`save`），也支持 `fuzzel` 交互菜单与 `apply` 恢复保存的配置（配置存 `~/.local/state/display/outputs.json`） |
 | `swayidle.sh` | 空闲策略：超时锁屏、关显示器 |
-| `start-yazi.sh` | 在 kitty 里启动 yazi |
 
 截图不在这里出脚本，全部是 `binds.kdl` 里的单行命令（与 jswysnemc 一致）：
 
@@ -88,8 +87,7 @@
 | `Mod+Shift+S` | `wayfreeze` 冻结画面 → `slurp` 选区 → `grim` → `wl-copy` |
 | `Alt+Ctrl+S` | `mark-shot` 选区截图并标注 |
 
-录屏由状态栏按钮驱动，脚本是 `waybar/scripts/wf-recorder.sh`（两套 waybar 各一份副本，
-`waybar-quickshell` 那份同源）。
+录屏由状态栏按钮驱动，脚本是 `~/.config/scripts/wf-recorder.sh`（三套状态栏共用一份）。
 
 ## 外观与模糊
 

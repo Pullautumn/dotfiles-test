@@ -145,7 +145,7 @@ waybar_output() {
 }
 
 upgrade() {
-    local terminal_launcher="$HOME/.custom/bin/terminal-launcher"
+    local terminal_launcher="$HOME/.local/bin/terminal-launcher"
     if ! [[ -x "$terminal_launcher" ]]; then
         terminal_launcher="terminal-launcher"
     fi

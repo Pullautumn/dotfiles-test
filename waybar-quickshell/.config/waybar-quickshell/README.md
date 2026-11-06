@@ -87,9 +87,9 @@ switch-waybar.sh status      # 看当前样式和后台状态
 
 本目录是从 [jswysnemc/dotfiles](https://github.com/jswysnemc/dotfiles) 的 `waybar` 包原样搬来的，改了四处：
 
-1. 包目录由 `~/.config/waybar` 改为 `~/.config/waybar-quickshell`，
-   因此 `config.jsonc` 里所有 `~/.config/waybar/scripts/` 都改成了 `~/.config/waybar-quickshell/scripts/`
-   （脚本用本目录 `scripts/` 里的自带副本，与主 waybar 的同名脚本互相独立，不会互相覆盖）。
+1. 包目录由 `~/.config/waybar` 改为 `~/.config/waybar-quickshell`。
+   其中 `screenshot.sh`、`wf-recorder.sh` 与另外两套状态栏共用，统一放在
+   `~/.config/scripts/`；其余模块脚本在本目录 `scripts/`。
 2. `custom/arch` 右键原本是 `killall waybar ; waybar`，会让样式弹回主 waybar，改为
    `switch-waybar.sh restart`。
 3. `custom/arch` 中键原本打开 Quickshell 的 `wallpaper-selector`（依赖 `theme-gen`/`wallpaper-manager`），

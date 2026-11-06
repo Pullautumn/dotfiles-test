@@ -420,6 +420,7 @@ waybar/.config/waybar/...        →  ~/.config/waybar/...
 zsh/.config/zsh/...              →  ~/.config/zsh/...
 zshenv/.zshenv                   →  ~/.zshenv
 local-bin/.local/bin/...         →  ~/.local/bin/...
+scripts/.config/scripts/...      →  ~/.config/scripts/...
 
 setup/                           安装器本体（不是 stow 包）
 wallpaper/Pictures/Wallpapers/   壁纸，安装时链接到 ~/Pictures/Wallpapers
@@ -428,6 +429,22 @@ mainfest.txt                     包名与目标路径的对照表，供 to_stow
 ```
 
 安装器的目录结构、阶段划分、如何加新步骤见 [setup/README.md](setup/README.md)。
+
+### 脚本放哪儿
+
+脚本分三层，新加脚本先对号入座（完整说明见
+[scripts/README.md](scripts/.config/scripts/README.md)）：
+
+| 层 | 位置 | 判据 |
+|---|---|---|
+| PATH 命令 | `~/.local/bin` | 要手敲、被多个组件按名调用、或作为系统入口 |
+| 跨组件流程 | `~/.config/scripts` | 调用方 ≥2 个组件，只在图形会话里用 |
+| 组件私有 | 各组件的 `scripts/` | 只有它自己的配置 / 主题 / QML 调用 |
+
+一句话：**生命周期跟谁绑定就放谁的目录；出现第二个调用方，升级到共享层。**
+
+`rofi` 的 `launcher_tN`、`mpv` 的 lua、quickshell 各组件里的 helper 属于硬约束，
+必须留在自己目录，不要往共享层搬。
 
 ## 聚合脚本
 

@@ -1,10 +1,32 @@
 # scripts
 
-一组和壁纸、配色、截图相关的胶水脚本，放在 `~/.config/scripts`。
-
-它们被 waypaper 的 `post_command`、niri 的快捷键、随机壁纸脚本互相调用，是「换壁纸 → 整套换色」这条链路的中间层。
+跨组件共用的胶水脚本，放在 `~/.config/scripts`。壁纸、配色、截图、录屏、状态栏切换都在这里，
+被 waypaper 的 `post_command`、niri 的键位与 autostart、三套状态栏的按钮互相调用，
+是「换壁纸 → 整套换色」这条链路的中间层。
 
 部署到 `~/.config/scripts`。安装器 Phase 5 会给这里的 `*.sh` / `*.py` 统一加执行权限。
+
+## 脚本放哪儿（三层规则）
+
+新加脚本前先对号入座，不要凭手感决定：
+
+| 层 | 位置 | 判据 | 例子 |
+|---|---|---|---|
+| **T0 · PATH 命令** | `~/.local/bin` | 要在终端里手敲、被多个组件按名调用、或作为系统入口（session / systemd 直接 exec） | `qs-lock`、`qs-popup` |
+| **T1 · 跨组件流程** | `~/.config/scripts`（这里） | 调用方 ≥2 个组件，但只在图形会话里用，不需要进 PATH | `switch-waybar.sh`、`matugen-update.sh`、`screenshot.sh`、`wf-recorder.sh`、`terminal-launcher` |
+| **T2 · 组件私有** | 组件自己的目录 | 只有它自己的配置 / 主题 / QML 调用，属于实现细节 | `waybar/scripts/caffeine.sh`、`niri/scripts/swayidle.sh`、`rofi/scripts/launcher_tN` |
+
+一句话判据：**生命周期跟谁绑定，就放谁的目录；出现第二个调用方，升级到共享层；
+需要被手敲或被系统入口调用，进 PATH。**
+
+几条硬约束（不是习惯问题，搬了会坏）：
+
+- `rofi/scripts/launcher_tN`、`powermenu_tN` 被主题 `.rasi` 用相对路径引用，必须留在主题目录里
+- `mpv/scripts/*.lua` 只从 `~/.config/mpv/scripts` 自动加载，没有可配的搜索路径
+- quickshell 各组件目录里的 helper 与 `shell.qml` 同目录，才能「整目录复制即自成一套」
+
+引用方式：T1 一律写成绝对路径 `~/.config/scripts/xxx.sh`。waybar 的 `on-click` 和 niri 的
+`spawn` / `spawn-sh` 都不走登录 shell，取不到 zsh 里加的 PATH。
 
 ## 脚本
 
@@ -17,6 +39,37 @@
 | `niri_auto_blur_bg.sh` | 自动跟随当前壁纸生成模糊背景 | `niri/conf.d/autostart.kdl` 开机启动 |
 | `random-anime-wallpaper.sh` | 从在线 API 随机下载动漫壁纸并设为壁纸 | `Mod+Shift+F10` |
 | `wallpaper-rotate.sh` | 开机「自动随机换壁纸」的开关，状态存 `~/.cache/wallpaper-auto-rotate` | `niri/conf.d/autostart.kdl` 开机启动、`Mod+Ctrl+F10`、手动 |
+| `screenshot.sh` | 选区截图直接进剪贴板（`grim` + `slurp`，三行） | 三套状态栏的截图按钮 |
+| `wf-recorder.sh` | 录屏主控：`waybar` 出状态 JSON，`start` / `stop` / `pause-toggle` / `settings` | 三套状态栏的录屏按钮、quickshell 录屏面板 |
+| `terminal-launcher` | 按 `$TERMINAL` 打开终端，屏蔽 kitty / ghostty / foot / alacritty / wezterm 等参数差异；`--float` 开 1200×1000 浮动窗 | `waybar-quickshell` 的终端 / CPU / 内存 / 网络按钮 |
+
+## terminal-launcher
+
+从 [jswysnemc/dotfiles](https://github.com/jswysnemc/dotfiles) 的 `my-scripts/.custom/bin` 原样移植。
+
+```bash
+~/.config/scripts/terminal-launcher                # 打开 $TERMINAL
+~/.config/scripts/terminal-launcher --float        # 浮动窗口（app-id = terminal-float）
+~/.config/scripts/terminal-launcher -- btop        # 在终端里跑命令
+```
+
+终端由 `$TERMINAL` 决定，支持 `kitty --single-instance` 这种带参数的写法；未设置时按
+kitty → ghostty → foot → alacritty → wezterm → konsole → gnome-terminal → kgx → xterm
+的顺序探测第一个装了的。waybar 的 `on-click` 不走登录 shell，取不到 zsh 里设的 `$TERMINAL`，
+所以这几个按钮实际走的是探测链（本仓库装着 kitty，命中第一个）。
+
+`--float` 产生的 app-id 是 **`terminal-float`**（ghostty 走 `com.snemc.terminal-float`，GTK
+要求反域名格式），由 `niri/conf.d/window-rules.kdl` 里单独那条 `match app-id="(?i)terminal-float"`
+接管（`open-floating true` + 固定 1200×1000）。改类名必须两边一起改。
+
+注意别和同一文件里的 `app-id="floating-term"` 混了：那个是 `waybar-niri-Win11Like` 更新按钮
+（`kitty --class floating-term -e shorin checkallupdates`）专用的，两个入口互不相干。
+
+这个文件**没有 `.sh` 后缀**，靠 `setup/steps/03-dotfiles.sh` 的 shebang 探测拿执行位
+（`find ... ! -name "*.*"` + 首行 `#!`），不在 `*.sh` 批量赋权那一段里。
+
+> 已知遗留：`waybar-quickshell/scripts/package-updates.sh:148` 仍引用旧路径
+> `~/.local/bin/terminal-launcher`，该模块已弃用、暂不修。
 
 ## matugen-update.sh
 

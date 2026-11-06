@@ -134,16 +134,16 @@
     },
     "custom/app-browser": {
         "format": "",
-        "tooltip-format": "浏览器(brave 浏览器)",
-        "on-click": "brave"
+        "tooltip-format": "浏览器(google-chrome 浏览器)",
+        "on-click": "google-chrome"
     },
     "custom/app-term": {
         "format": "",
         "tooltip-format": "左键:终端 ($TERMINAL)\n右键:以浮动方式打开终端",
         // "on-click": "kitty",
-        "on-click": "~/.custom/bin/terminal-launcher",
+        "on-click": "~/.config/scripts/terminal-launcher",
         // "on-click-right": "kitty --class kitty-float",
-        "on-click-right": "~/.custom/bin/terminal-launcher --float"
+        "on-click-right": "~/.config/scripts/terminal-launcher --float"
     },
     // --- 快捷方式抽屉 ---
     "group/shortcuts": {
@@ -208,22 +208,22 @@
     "custom/screenshot": {
         "format": "",
         "tooltip-format": "左键:选区截图并复制到剪贴板\n中键:启用长截图\n右键:打开shot-toolbox工具箱",
-        "on-click": "~/.config/waybar-quickshell/scripts/screenshot.sh",
+        "on-click": "~/.config/scripts/screenshot.sh",
         "on-click-right": "~/.local/bin/qs-popup screenshot-toolbox",
         // "on-click-right": "~/.config/waybar-quickshell/scripts/power-screenshot.sh",
         "on-click-middle": "wayscrollshot"
     },
     //wf-recorder
     "custom/wfrec": {
-        "exec": "~/.config/waybar-quickshell/scripts/wf-recorder.sh waybar",
+        "exec": "~/.config/scripts/wf-recorder.sh waybar",
         "return-type": "json",
         "interval": 1,
         "signal": 9,
         "tooltip": true,
         // 左键：开始/停止录制
-        "on-click": "bash -c 'if ~/.config/waybar-quickshell/scripts/wf-recorder.sh is-active; then ~/.config/waybar-quickshell/scripts/wf-recorder.sh stop; else ~/.config/waybar-quickshell/scripts/wf-recorder.sh start; fi'",
+        "on-click": "bash -c 'if ~/.config/scripts/wf-recorder.sh is-active; then ~/.config/scripts/wf-recorder.sh stop; else ~/.config/scripts/wf-recorder.sh start; fi'",
         // 中键：暂停/恢复
-        "on-click-middle": "~/.config/waybar-quickshell/scripts/wf-recorder.sh pause-toggle",
+        "on-click-middle": "~/.config/scripts/wf-recorder.sh pause-toggle",
         // 右键：打开 QML 面板
         "on-click-right": "~/.local/bin/qs-popup screen-recorder"
     },
@@ -272,7 +272,7 @@
         "tooltip": true,
         "tooltip-format": "󰻠 CPU 使用率: {usage}%",
         // "on-click": "kitty -e btop"
-        "on-click": "~/.custom/bin/terminal-launcher -- btop"
+        "on-click": "~/.config/scripts/terminal-launcher -- btop"
     },
     // 温度组件：利用 format-critical 配合 CSS 变色
     "temperature": {
@@ -293,7 +293,7 @@
         "tooltip": true,
         "tooltip-format": "󰍛 内存\n已用: {used:.1f}G / {total:.1f}G ({percentage}%)\n交换: {swapUsed:.1f}G / {swapTotal:.1f}G",
         // "on-click": "kitty -e btop"
-        "on-click": "~/.custom/bin/terminal-launcher -- btop"
+        "on-click": "~/.config/scripts/terminal-launcher -- btop"
     },
     // --- 网络模块 (Network) ---
     "network": {
@@ -314,7 +314,7 @@
             "󰤨"
         ],
         // "on-click-right": "kitty -e nmtui",
-        "on-click-right": "~/.custom/bin/terminal-launcher -- nmtui",
+        "on-click-right": "~/.config/scripts/terminal-launcher -- nmtui",
         "on-click": "~/.local/bin/qs-popup wifi"
     },
     // --- 蓝牙模块 (Bluetooth) ---

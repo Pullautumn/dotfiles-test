@@ -72,6 +72,20 @@ window-rule {
     open-floating true
 }
 
+// 浮动终端：~/.config/scripts/terminal-launcher --float 产生的 app-id。
+// 单独开一条、不并入上面「以浮动模式打开的软件」，因为这里要固定 1200x1000 ——
+// 混进那条共用规则会把 wechat、flameshot 那几十个窗口一起钉成这个尺寸。
+// 用 (?i) 正则而不是字面串：kitty 给的是 "terminal-float"，ghostty 给的是
+// "com.snemc.terminal-float"（GTK 要求 app-id 是反域名格式），一条正则两边都兜住。
+// 与上面第 46 行的 app-id="floating-term" 是两个独立入口，那条继续给
+// waybar-niri-Win11Like 更新按钮的 `kitty --class floating-term` 用，不要合并。
+window-rule {
+    match app-id="(?i)terminal-float"
+    open-floating true
+    default-column-width { fixed 1200; }
+    default-window-height { fixed 1000; }
+}
+
 //快速终端
 window-rule {
     match title="quickterminal"

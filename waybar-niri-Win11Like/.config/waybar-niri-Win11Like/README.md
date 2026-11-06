@@ -24,7 +24,7 @@
 | `style.css` | 独立样式，`style.css.backup` 是改动前的备份 |
 | `colors.css` | 由 matugen 生成（`~/.config/waybar-niri-Win11Like/colors.css`） |
 | `logo/` | 蓝牙等模块用的图标 |
-| `scripts/` | `cava.sh`、`check-updates.sh`、`command-center.sh`、`toggle-bluetooth.sh`、`screenshot.sh`（选区截图）、`wf-recorder.sh`（录屏主控） |
+| `scripts/` | `cava.sh`、`check-updates.sh`、`command-center.sh`、`toggle-bluetooth.sh`（截图与录屏脚本三套状态栏共用，在 `~/.config/scripts/`） |
 
 ## 切换
 

@@ -32,9 +32,11 @@
 |---|---|
 | `battery-status.sh` / `battery-tooltip.sh` | 电池状态文字与悬浮提示 |
 | `cliphist-fuzzel-img` | 带图片预览的剪贴板选择器（`Mod+Shift+V`） |
-| `screenshot.sh` | 选区截图，直接进剪贴板（`wayfreeze` 由 niri 键位负责，这里只 `grim`+`slurp`） |
-| `wf-recorder.sh` | 录屏主控：`waybar` 出状态 JSON、`start`/`stop`/`pause-toggle`/`settings` |
 | `switch-perf-mode.sh` | 切换性能模式（`power-profiles-daemon`） |
+
+截图和录屏脚本三套状态栏用的是同一份，已移到 `~/.config/scripts/`
+（`screenshot.sh`、`wf-recorder.sh`），本目录不再保存副本。
+`scripts/` 里只留本样式自己会用的模块脚本。
 
 截图模块三个鼠标键：左键调 `screenshot.sh`，中键调 `wayscrollshot`（滚动长截图），
 右键开 `qs-popup screenshot-toolbox`。录屏模块左键开关、中键暂停、右键开录制设置。
