@@ -129,8 +129,8 @@
     },
     "custom/app-file": {
         "format": "",
-        "tooltip-format": "文件管理器 (Dolphin)",
-        "on-click": "dolphin"
+        "tooltip-format": "文件管理器 (nautilus)",
+        "on-click": "nautilus"
     },
     "custom/app-browser": {
         "format": "",
@@ -248,7 +248,7 @@
             "(.*) - Mozilla Firefox": "Firefox  ",
             "(.*) - Visual Studio Code": "VSCode 󰨞 ",
             "(.*) - Terminal": ">_ Term ",
-            "(.*) - Dolphin": "Files  "
+            "(.*) - Nautilus": "Files  "
         },
         // 左键：切换 浮动/平铺 模式
         "on-click": "niri msg action toggle-window-floating",
