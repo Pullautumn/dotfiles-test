@@ -104,19 +104,33 @@ lockscreen/
 参考 `~/.config/niri/scripts/swayidle.sh`:
 
 ```bash
-IDLE_TIMEOUT=45       # 空闲多久后启动锁屏
+IDLE_TIMEOUT=180      # 空闲多久后启动锁屏
 GRACE_DURATION=30     # Grace period 时长
-DPMS_TIMEOUT=120      # 空闲多久后关闭显示器
+DPMS_TIMEOUT=300      # 空闲多久后关闭显示器
+SUSPEND_TIMEOUT=600   # 空闲多久后自动挂起
 
 LOCK_CMD="pgrep -x quickshell -a | grep -q 'lockscreen' || LOCK_GRACE_TIMEOUT=${GRACE_DURATION} qs-lock"
+LOCK_CMD_UI="pgrep -x quickshell -a | grep -q 'lockscreen' || LOCK_GRACE_TIMEOUT=3 qs-lock"
 LOCK_CMD_IMMEDIATE="pgrep -x quickshell -a | grep -q 'lockscreen' || LOCK_GRACE_TIMEOUT=0 qs-lock"
-WAKE_FACE_CMD="niri msg action power-on-monitors; qs-lock --face"
+WAKE_CMD="niri msg action power-on-monitors; qs-lock --face"
 
 exec swayidle \
-    timeout $IDLE_TIMEOUT  "$LOCK_CMD" \
-    timeout $DPMS_TIMEOUT  'niri msg action power-off-monitors' \
-        resume             "$WAKE_FACE_CMD" \
-    before-sleep           "$LOCK_CMD_IMMEDIATE" \
-    after-resume           "$WAKE_FACE_CMD" \
-    lock                   "$LOCK_CMD_IMMEDIATE"
+    timeout "$IDLE_TIMEOUT"    "$LOCK_CMD" \
+    timeout "$DPMS_TIMEOUT"    'niri msg action power-off-monitors' \
+        resume                 "$WAKE_CMD" \
+    timeout "$SUSPEND_TIMEOUT" 'systemctl suspend' \
+    before-sleep               "$LOCK_CMD_IMMEDIATE" \
+    after-resume               "$WAKE_CMD" \
+    lock                       "$LOCK_CMD_UI"
 ```
+
+三个不能改的地方：
+
+1. **不加 `-w`**。`-w` 会 `waitpid`，而 `qs-lock` 末行是
+   `exec quickshell -p ~/.config/quickshell/lockscreen`（常驻），一旦真的起锁屏，
+   swayidle 会卡到解锁为止，期间所有 timeout 停摆。睡前锁屏的窗口由 logind 的
+   `InhibitDelayMaxSec`（默认 5s）兜底。
+2. **`resume` 必须紧跟在 `timeout DPMS` 后面**。swayidle 的 `resume` 修饰的是前
+   一条 timeout，放到 `timeout SUSPEND` 后面就变成「挂起恢复后才亮屏」。
+3. **`lock` 事件要配对 `loginctl lock-session`**。它不自计时，靠 logind 的 `Lock`
+   信号触发；`binds.kdl` 里 `Mod+Alt+L` 走的就是这条路。

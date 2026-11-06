@@ -478,7 +478,7 @@ setup_matugen() {
     if command_exists gsettings; then
         local scheme theme_name
         if [[ "$init_mode" == "light" ]]; then
-            scheme="prefer-light"; theme_name="adw-gtk"
+            scheme="prefer-light"; theme_name="adw-gtk3"
         else
             scheme="prefer-dark";  theme_name="adw-gtk3-dark"
         fi

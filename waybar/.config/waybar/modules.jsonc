@@ -130,7 +130,7 @@
     "custom/clipboard": {
         "format": "󰅇",
         // "on-click": "pkill fuzzel || $HOME/.config/waybar/scripts/cliphist-fuzzel-img",
-        "on-click": "kitty --title shorinclip -e shorinclip",
+        "on-click": "kitty --title cliphist-tui -e cliphist-tui",
         "tooltip-format": "Clipboard"
     },
     "cpu": {

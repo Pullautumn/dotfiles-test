@@ -26,7 +26,8 @@ fcitx5/.config/fcitx5/conf/notifications.conf
 fcitx5/.config/fcitx5/profile
 fuzzel/.config/fuzzel/colors.ini
 kitty/.config/kitty/current-theme.conf
-kitty/.config/kitty/kitty.conf
+# kitty.conf 是手写配置（字体/透明度/键位），仓库里没有任何程序生成它，必须提交。
+# 只有编辑器留下的 .bak 才忽略。
 kitty/.config/kitty/kitty.conf.bak
 kitty/.config/kitty/themes/
 local-share-fcitx5/.local/share/fcitx5/rime/installation.yaml
@@ -72,7 +73,6 @@ local-share-applications/.local/share/applications/mimeapps.list
 local-share-applications/.local/share/applications/mimeinfo.cache
 obs-studio/.config/obs-studio/logs/2026-03-27 14-56-03.txt
 obs-studio/.config/obs-studio/profiler_data/2026-03-27 14-56-03.csv.gz
-zsh/.config/zsh/.zcompdump-PullautumnArch-5.9
-zsh/.config/zsh/.zcompdump-PullautumnArch-5.9.zwc
-zsh/.config/zsh/.zcompdump
+# zcompdump 名字带主机名和 zsh 版本，用通配才不会换机器就漏
+zsh/.config/zsh/.zcompdump*
 

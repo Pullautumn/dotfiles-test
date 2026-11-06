@@ -35,13 +35,12 @@ AUR_HELPER=""
 TARGET_USER="$(id -un)"
 TARGET_HOME="$HOME"
 
-# 配置作者的用户名/家目录，仅供参考。
+# 配置作者的用户名，仅供参考。
 # 安装器**不再**拿它做全仓库批量替换（那会把 ~/.dotfiles 改写成别人的用户名）。
 # 现在配置里能自解析的都已改成 ~ / $HOME / vim.fn.expand；剩余例外：
 #   · GTK 书签 → 安装时按 $HOME 重新生成（见 03-dotfiles.sh: _dotfiles_generate_bookmarks）
 #   · niri 的 screenshot-path → 只提示，不代改
 LEGACY_USER="pullautumn"
-LEGACY_HOME="/home/pullautumn"
 
 # ==============================================================================
 # Stow Packages
@@ -83,10 +82,10 @@ PKG_GROUPS[notify]="swaync libnotify"
 # 这里只剩电源菜单 wlogout。
 PKG_GROUPS[lock]="wlogout"
 PKG_GROUPS[screenshot]="grim slurp wayfreeze wf-recorder imv ffmpeg"
-PKG_GROUPS[clipboard]="cliphist wl-clipboard xclip"
+PKG_GROUPS[clipboard]="cliphist wl-clipboard xclip cliphist-tui-git"
 PKG_GROUPS[terminal]="kitty starship"
 PKG_GROUPS[shell]="zsh atuin zoxide fzf thefuck fnm"
-PKG_GROUPS[files]="thunar thunar-volman thunar-archive-plugin tumbler gvfs gvfs-mtp gvfs-smb ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring"
+PKG_GROUPS[files]="thunar thunar-volman thunar-archive-plugin tumbler nautilus gvfs gvfs-mtp gvfs-smb ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring"
 PKG_GROUPS[input]="fcitx5 fcitx5-im fcitx5-chinese-addons"
 PKG_GROUPS[audio]="pipewire wireplumber pipewire-pulse pipewire-alsa pavucontrol playerctl"
 PKG_GROUPS[network]="networkmanager network-manager-applet nm-connection-editor bluez bluez-utils blueman"
@@ -96,6 +95,7 @@ PKG_GROUPS[dev]="python python-pip nodejs npm"
 PKG_GROUPS[media]="mpv yazi cava"
 PKG_GROUPS[power]="brightnessctl wlsunset"
 PKG_GROUPS[browser]="google-chrome firefox"
+PKG_GROUPS[theme]="adw-gtk-theme"
 
 PKG_GROUP_NAMES=(
     "wm:窗口管理器 (niri)"
@@ -105,10 +105,10 @@ PKG_GROUP_NAMES=(
     "notify:通知 (swaync)"
     "lock:电源菜单 (wlogout；锁屏在 quickshell 里)"
     "screenshot:截图与录屏 (grim/wayfreeze/wf-recorder)"
-    "clipboard:剪贴板 (cliphist)"
+    "clipboard:剪贴板 (cliphist + cliphist-tui)"
     "terminal:终端与提示符 (kitty/starship)"
     "shell:Shell 增强 (zsh/atuin/zoxide)"
-    "files:文件管理 (thunar)"
+    "files:文件管理 (thunar/nautilus)"
     "input:输入法 (fcitx5)"
     "audio:音频 (pipewire)"
     "network:网络与蓝牙"
@@ -118,6 +118,7 @@ PKG_GROUP_NAMES=(
     "media:播放器与文件管理 (mpv/yazi)"
     "power:亮度与色温 (brightnessctl/wlsunset)"
     "browser:浏览器"
+    "theme:GTK 主题 (adw-gtk3，明暗切换用)"
 )
 
 # ==============================================================================

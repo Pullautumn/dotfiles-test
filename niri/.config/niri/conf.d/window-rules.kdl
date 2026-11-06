@@ -94,9 +94,9 @@ window-rule {
     default-column-width { fixed 800; }
     default-window-height { fixed 500; }
 }
-//shorinclip剪贴板TUI 
+// cliphist-tui 剪贴板 TUI
 window-rule{
-	match title="shorinclip"
+	match title="cliphist-tui"
 	default-column-width { fixed 1100; }
     default-window-height { fixed 1000; }
     //min-height 800

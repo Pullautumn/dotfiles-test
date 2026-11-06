@@ -31,14 +31,14 @@
 ### post_command：换壁纸后自动换色
 
 ```ini
-post_command = $HOME/.config/scripts/matugen-update.sh $wallpaper && sleep 0.8 && $HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh $wallpaper
+post_command = $HOME/.config/scripts/matugen-update.sh $wallpaper && sleep 0.8 && $HOME/.config/scripts/niri_auto_blur_bg.sh $wallpaper
 ```
 
 选完壁纸会依次做三件事：
 
 1. `matugen-update.sh` 按新壁纸重新生成全部应用配色
 2. `sleep 0.8` 等 awww 真正把图刷上去
-3. `niri_set_overview_blur_dark_bg.sh` 生成 overview 用的模糊背景
+3. `niri_auto_blur_bg.sh` 生成 overview 用的模糊背景
 
 想把「换壁纸」和「换配色」解绑，把 `post_command` 清空即可。
 

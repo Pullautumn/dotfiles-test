@@ -44,6 +44,14 @@ install_packages() {
     section "Phase 4" "Install Packages"
 
     _resolve_installer
+
+    # 与 _install_each 保持同一套参数：paru 必须带 --skipreview，
+    # 否则 PKG_GROUPS 里的 AUR 包（如 cliphist-tui-git）在无人值守安装时会卡在 PKGBUILD 审阅。
+    local -a pkg_cmd=($AUR_HELPER -S --needed --noconfirm)
+    if [[ "$AUR_HELPER" == "paru" ]]; then
+        pkg_cmd=($AUR_HELPER -S --needed --skipreview --noconfirm)
+    fi
+
     local total=${#PKG_GROUP_NAMES[@]}
     local current=0
     local failed=0
@@ -98,7 +106,7 @@ install_packages() {
         spin_pid=$!
 
         local result=0
-        if $AUR_HELPER -S --needed --noconfirm "${want[@]}" >> "$LOG_FILE" 2>&1; then
+        if "${pkg_cmd[@]}" "${want[@]}" >> "$LOG_FILE" 2>&1; then
             result=0
         else
             result=1

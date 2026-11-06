@@ -499,7 +499,7 @@
         "return-type": "json",
         "exec": "~/.config/waybar-quickshell/scripts/proxies-control.sh status",
         "on-click": "~/.config/waybar-quickshell/scripts/proxies-control.sh toggle-mode",
-        "on-click-right": "brave --app=\"http://127.0.0.1:9090/ui/#/proxies\"",
+        "on-click-right": "google-chrome --app=\"http://127.0.0.1:9090/ui/#/proxies\"",
         "interval": 5,
         "signal": 8
     },

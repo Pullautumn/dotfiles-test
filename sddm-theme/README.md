@@ -146,11 +146,61 @@ sudo systemctl enable --now ly@tty1
 ```ini
 [General]
 background=background.png  # 背景图片
+avatar=avatar.jpg          # 登录头像
 type=image                 # image 或 color
 color=#1d1f21              # 纯色背景色
 fontSize=14
 fontFamily="Noto Sans"
 ```
+
+`background` 和 `avatar` 都写**相对文件名**，解析基准是本主题目录（Qt 拿 QML 文件所在目录当
+baseUrl）。只有想指向主题目录以外时才需要写 `file:///绝对路径`；裸绝对路径会被当成相对路径
+拼到主题目录后面，结果是一张空图。
+
+`avatar` 由 `Main.qml` 的 `source: config.avatar || ...` 读取，后半段保留了原来的
+`file:///home/<用户名>/.face` 兜底 —— 把 `theme.conf` 里的 `avatar` 删掉就退回读家目录的 `.face`。
+
+## 换头像 / 换背景
+
+两者都是**覆盖同名文件**，不需要改配置：
+
+```bash
+cd ~/.dotfiles/sddm-theme
+
+# 头像：正方形，建议 288×288 或 512×512（容器 96×96 圆形，自动居中裁圆）
+cp 新头像.jpg avatar.jpg
+
+# 背景：不低于屏幕分辨率，体积控制在 2–3MB（greeter 每次登录都要重新解一遍）
+cp 新背景.png background.png
+```
+
+改完同步到系统 —— `sddm-theme/` 是**拷贝部署**（`setup_sddm` 的 `cp -rf`），不是 stow 软链，
+改仓库不会自动落到 `/usr/share`：
+
+```bash
+sudo cp theme.conf       /usr/share/sddm/themes/lunar-glass/theme.conf
+sudo cp Main.qml         /usr/share/sddm/themes/lunar-glass/Main.qml
+sudo cp avatar.jpg       /usr/share/sddm/themes/lunar-glass/avatar.jpg
+sudo cp background.png   /usr/share/sddm/themes/lunar-glass/background.png
+```
+
+只换图的话前两条可以跳过（文件名没变，配置也没变），`theme.conf` / `Main.qml` 只有第一次要拷。
+
+### 兜底行为
+
+- `avatar.jpg` 缺失或损坏 → `userAvatar.status` 变 `Error` → 自动显示 `default-avatar.svg`。
+  所以这个 svg 不能删。
+- `background.png` 缺失 → 背景层不渲染，露出 `color=#1d1f21` 的纯色底。上游原版背景留在
+  `default-background.png`，想换回去直接 `cp default-background.png background.png`。
+
+### 为什么不用 `~/.face`
+
+`Main.qml` 的兜底路径是 `file:///home/<用户名>/.face`，但 greeter 以 `sddm` 用户运行，读它
+要穿过家目录（需要 `x` 位），否则头像永远不显示，而改家目录权限会把整个 home 暴露给所有
+本地用户。`theme.conf` 的 `avatar` 指向主题目录自己的文件，`/usr/share` 天然 world-readable，
+不存在这个问题。
+
+另外 `usernameInput.text` 在登录框为空时是空串，那时兜底路径直接得到 `""`，头像同样不显示。
 
 ## 依赖
 
@@ -161,13 +211,15 @@ fontFamily="Noto Sans"
 ## 文件结构
 
 ```
-├── Main.qml           # 主界面
-├── KeyButton.qml      # 虚拟键盘按键组件
-├── theme.conf         # 主题配置
-├── metadata.desktop   # 主题元数据
-├── background.png     # 默认背景图
-├── default-avatar.svg # 默认头像
-└── icons/             # 图标资源
+├── Main.qml               # 主界面
+├── KeyButton.qml          # 虚拟键盘按键组件
+├── theme.conf             # 主题配置
+├── metadata.desktop       # 主题元数据
+├── background.png         # 登录背景（换背景 = 覆盖它）
+├── avatar.jpg             # 登录头像（换头像 = 覆盖它）
+├── default-background.png # 上游原版背景，未被引用，备查用
+├── default-avatar.svg     # 头像加载失败时的兜底
+└── icons/                 # 图标资源
 ```
 
 ## 许可证

@@ -37,8 +37,9 @@ qs-lock --face     # 锁屏并立刻触发人脸识别（装了 howdy 才有意�
 
 | 入口 | 命令 |
 |---|---|
-| `Mod+Alt+L` | `LOCK_GRACE_TIMEOUT=3 qs-lock` |
-| 空闲 300 秒（`swayidle.sh`） | `LOCK_GRACE_TIMEOUT=30 qs-lock` |
+| `Mod+Alt+L` | `loginctl lock-session` → swayidle 的 `lock` 事件 → `LOCK_GRACE_TIMEOUT=3 qs-lock` |
+| 空闲 180 秒（`swayidle.sh` 的 `timeout`） | `LOCK_GRACE_TIMEOUT=30 qs-lock` |
+| 空闲 600 秒（`swayidle.sh` 的 `timeout`） | `systemctl suspend`（睡前由 `before-sleep` 立刻锁屏） |
 | 合盖 / 休眠前（`before-sleep`） | `LOCK_GRACE_TIMEOUT=0 qs-lock` |
 | 状态栏 / 电源菜单 / idle-warning | `qs-lock`（3 秒或无宽限，见各配置） |
 

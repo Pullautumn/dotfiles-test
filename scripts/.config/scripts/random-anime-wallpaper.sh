@@ -146,7 +146,7 @@ awww img "$FINAL_PATH" --transition-duration 2 --transition-type center --transi
     
     sleep 0.5
     
-    [ -x "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" ] && "$HOME/.config/scripts/niri_set_overview_blur_dark_bg.sh" > /dev/null
+    [ -x "$HOME/.config/scripts/niri_auto_blur_bg.sh" ] && "$HOME/.config/scripts/niri_auto_blur_bg.sh" > /dev/null
     
     # [修改] 动态清理逻辑
     if [ "$ENABLE_CLEANUP" = true ]; then

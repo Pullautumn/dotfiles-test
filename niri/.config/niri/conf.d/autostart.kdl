@@ -10,7 +10,7 @@ spawn-at-startup "awww-daemon" "-n" "overview"
 //   off → 把上次那张贴回屏幕，不换图、不换色、不重算模糊，开机零计算
 // 切换开关：Mod+Ctrl+F10，或手动跑 ~/.config/scripts/wallpaper-rotate.sh toggle
 // ⚠️ 别改回 waypaper --restore：它同样会跑 config.ini 里的 post_command
-//    （matugen + niri_set_overview_blur_dark_bg.sh），等于照样「动」，开关就白做了。
+//    （matugen + niri_auto_blur_bg.sh），等于照样「动」，开关就白做了。
 spawn-sh-at-startup "sleep 1 && ~/.config/scripts/wallpaper-rotate.sh boot"
 // 询问管理员权限功能（身份验证）
 spawn-at-startup "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
@@ -37,9 +37,7 @@ spawn-at-startup "fcitx5"
 // 使用rofi剪贴板
 spawn-sh-at-startup "wl-paste --type text --watch cliphist store & wl-paste --type image --watch cliphist store & wait"
 // spawn-at-startup "wl-paste" "--watch" "cliphist" "store"
-// 空闲策略：300s 锁屏 / 330s 熄屏 / 合盖前立刻锁屏（qs-lock，见 scripts/swayidle.sh）
-// 注意：老版本这个脚本因为 `exec swayidle -w \` 后面跟了注释行，整段参数被吃掉，
-// 从来没生效过。修好之后它才真的在管空闲锁屏，别随手注释掉。
+// 空闲策略：180s 锁屏 / 300s 熄屏 / 600s 自动挂起 / 合盖前立刻锁屏（时间线见 niri/scripts/swayidle.sh）
 spawn-at-startup "~/.config/niri/scripts/swayidle.sh"
 // 大写锁定键的osd显示
 spawn-at-startup "swayosd-server"

@@ -35,8 +35,8 @@
 | `Mod+E` | 文件管理器（优先 nautilus，没有就 thunar） |
 | `Mod+Alt+E` | 文件管理器（thunar） |
 | `Mod+B` | 浏览器 |
-| `Mod+V` / `Mod+Shift+V` | 剪贴板（shorinclip / fuzzel 图片预览版；Quickshell 样式下是 Quickshell clipboard） |
-| `Mod+Alt+L` | 锁屏（Quickshell 锁屏，`qs-lock`） |
+| `Mod+V` / `Mod+Shift+V` | 剪贴板（cliphist-tui / fuzzel 图片预览版；Quickshell 样式下是 Quickshell clipboard） |
+| `Mod+Alt+L` | 锁屏（`loginctl lock-session` → swayidle 的 `lock` 事件 → `qs-lock`） |
 | `Mod+N` | 通知中心（swaync；Quickshell 样式下是 Quickshell 通知中心） |
 | `Mod+Shift+N` | NiriMod 图形化配置编辑器（需自行安装 `nirimod-git`） |
 | `Mod+Alt+Slash` | 快捷键说明弹窗 |
@@ -75,7 +75,7 @@
 | `niri-quick-switch-fuzzel.py` | `Alt+Tab` 的窗口切换菜单 |
 | `niri-binds` | 读取 `binds.kdl` 生成快捷键说明 |
 | `niri-monitor-switch.sh` | 显示器模式切换：quick-settings 面板的后端（`list-json`/`set`/`save`），也支持 `fuzzel` 交互菜单与 `apply` 恢复保存的配置（配置存 `~/.local/state/display/outputs.json`） |
-| `swayidle.sh` | 空闲策略：超时锁屏、关显示器 |
+| `swayidle.sh` | 空闲策略：180s 锁屏 / 300s 熄屏 / 600s 自动挂起；睡前立刻锁屏、唤醒刷脸 |
 
 截图不在这里出脚本，全部是 `binds.kdl` 里的单行命令（与 jswysnemc 一致）：
 
@@ -120,8 +120,9 @@ awww img -n overview <模糊图>                         # 贴到 awww-daemonove
 ```
 
 配合 `window-rules.kdl` 开头的 `place-within-backdrop true`，这张图才会落进 overview 背景。
-`scripts/niri_auto_blur_bg.sh` 和 `niri_set_overview_blur_dark_bg.sh` 内容完全相同（md5 一致），
-一个给开机用、一个给换壁纸用。
+`scripts/niri_auto_blur_bg.sh` 是唯一一份实现，开机、换壁纸、Win11Like 状态栏中键都调它；
+它自己按壁纸路径做缓存，重复调用时命中缓存就直接贴图，不会重跑 `magick`。
+（历史上还有一个内容完全相同的 `niri_set_overview_blur_dark_bg.sh`，已并入这一个。）
 
 > Win11 那套状态栏 `style.css` 里 `window#waybar` 用的是不透明的 `@surface`，
 > 原生 blur 在它身上看不出来。想要磨砂效果就自己改成 `alpha(@surface, 0.85)` 之类。

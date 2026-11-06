@@ -15,7 +15,7 @@
 #
 #   on  → waypaper --random
 #         换一张新图，然后跑 waypaper 的 post_command：
-#         matugen-update.sh 重算全套配色 + niri_set_overview_blur_dark_bg.sh 重算总览模糊。
+#         matugen-update.sh 重算全套配色 + niri_auto_blur_bg.sh 重算总览模糊。
 #         一次开机三件事全跑。
 #
 #   off → awww restore

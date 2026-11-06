@@ -146,7 +146,7 @@ Rectangle {
                 id: userAvatar
                 anchors.fill: parent
                 anchors.margins: 3
-                source: usernameInput.text ? "file:///home/" + usernameInput.text + "/.face" : ""
+                source: config.avatar || (usernameInput.text ? "file:///home/" + usernameInput.text + "/.face" : "")
                 fillMode: Image.PreserveAspectCrop
                 visible: status === Image.Ready
                 

@@ -66,11 +66,11 @@ binds {
     Mod+Y hotkey-overlay-title="yazi" { spawn "kitty" "--class" "Yazi" "--" "yazi"; }
     Mod+A     hotkey-overlay-title="应用启动器"    repeat=false    { spawn "~/.config/scripts/switch-waybar.sh" "launcher"; }
     Mod+Shift+V     hotkey-overlay-title="剪贴板"  repeat=false    { spawn "~/.config/scripts/switch-waybar.sh" "clipboard"; }
-    Mod+V hotkey-overlay-title="剪贴板 Clipboard" {spawn-sh "kitty --single-instance --title shorinclip -e shorinclip";} // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
-    // 锁屏：quickshell 的 lockscreen 组件（ext-session-lock-v1，PAM 认证）
-    // LOCK_GRACE_TIMEOUT=3 是手动锁屏的宽限时长（3 秒内动鼠标可取消）。
-    // 0 = 立刻要密码；空闲超时那条走 swayidle.sh，用的是 30 秒。
-    Mod+Alt+L hotkey-overlay-title="锁屏" { spawn-sh "LOCK_GRACE_TIMEOUT=3 qs-lock"; }
+    Mod+V hotkey-overlay-title="剪贴板 Clipboard" {spawn-sh "kitty --single-instance --title cliphist-tui -e cliphist-tui";} // Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
+    // 锁屏：经 logind 转给 swayidle.sh 的 `lock` 事件（LOCK_CMD_UI，宽限 3 秒），
+    // 这样外部 `loginctl lock-session` 也能触发同一套锁屏。
+    // 0 = 立刻要密码；空闲超时那条走 swayidle.sh 的 timeout，用的是 30 秒。
+    Mod+Alt+L hotkey-overlay-title="锁屏" { spawn "loginctl" "lock-session"; }
 
 	
     // 文档管理器。如果有nautilus的话会优先打开nautilus，没有的话会打开thunar， "--new-window"参数是允许打开新的窗口

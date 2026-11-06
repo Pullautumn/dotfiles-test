@@ -20,7 +20,7 @@ Material You 配色生成器。从当前壁纸提取主色，按模板渲染出�
 |---|---|
 | `config.toml` | 模板清单：每个 `[templates.名字]` 定义 `input_path` → `output_path`，可选 `pre_hook` / `post_hook` |
 | `templates/` | 模板源文件，用 matugen 的 `{{ colors.xxx }}` 语法 |
-| `custom/` | 作者留存的生成结果样本（各应用配色文件副本），**config.toml 不引用**，仅供对照 |
+| `custom/` | **`matugen-restore.sh` 的还原基线**（不是样本、不能删）：脚本里 `CUSTOM_DIR="$HOME/.config/matugen/custom"`，按 `RESTORE_LIST` 把这些文件拷回 `~/.config/`。`config.toml` 不引用它 |
 | `scripts/inject_vscode.sh` | 把生成的配色注入 VS Code 的 `settings.json` |
 
 ## 会写到哪些地方
@@ -80,4 +80,4 @@ waypaper（选壁纸）
 - **别手改 `colors.css` / `colors.kdl` / `theme.toml` 这些生成物**，下次换壁纸就没了。要改就改 `templates/` 里对应的模板。
 - `templates/` 里很多模板用了 Nerd Font 私有区字符，字体缺失时会渲染成方块。
 - 首次使用至少跑一次 `matugen image 某张图`，否则 waybar、fuzzel 这些引用 `colors.*` 的配置找不到文件，会退回默认配色（不报错，只是不好看）。
-- `custom/` 目录可以整删，不影响任何流程。
+- **别删 `custom/`**：它是 `~/.config/scripts/matugen-restore.sh` 的还原源（`CUSTOM_DIR`）。删了以后还原脚本第一步没有可拷的文件，只剩清图标缓存那几步。

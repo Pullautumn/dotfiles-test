@@ -23,11 +23,13 @@ fi
 # --- 2. 读取当前模式 (Toggle) ---
 # 缺失时的默认值要和 matugen-update.sh 保持一致（light），否则菜单会显示「当前: dark」，
 # 而实际配色是浅色，用户会被误导。
+# 注意：这里是双向赋值，默认值 light 只用来兜底缺失文件的情况；
+# 读到 dark 必须认，否则会一直停在 light，菜单永远只显示「切换到暗色模式」。
 CURRENT_MODE="light"
 if [ -f "$MODE_FILE" ]; then
     READ_MODE=$(cat "$MODE_FILE")
-    if [[ "$READ_MODE" == "light" ]]; then
-        CURRENT_MODE="light"
+    if [[ "$READ_MODE" == "dark" ]]; then
+        CURRENT_MODE="dark"
     fi
 fi
 

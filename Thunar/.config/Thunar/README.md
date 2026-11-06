@@ -56,4 +56,6 @@ thunar             # 重新启动
 
 - Thunar 是 Xfce 的组件，在纯 Wayland 下借 XWayland 跑；niri 需要 `xwayland-satellite` 才能启动它（核心包清单里已有）。
 - 想加右键动作，用图形界面更省事：`thunar-settings` → 「自定义动作」，改完会直接写回 `uca.xml`。
-- `nautilus` 装了的话 `Mod+E` 会优先开 nautilus，`Mod+Alt+E` 才固定走 Thunar。
+- `Mod+E` 默认打开 nautilus（`files` 组会装它），`Mod+Alt+E` 固定走 Thunar。
+  两者并存不冲突，但 `tumbler`、`thunar-volman`、`thunar-archive-plugin`、`ffmpegthumbnailer`
+  只服务 Thunar，nautilus 用自己的一套（`glycin`、`gnome-autoar`）。

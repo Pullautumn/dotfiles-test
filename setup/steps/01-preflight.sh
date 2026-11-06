@@ -112,7 +112,7 @@ REPO
         print_info "archlinuxcn repo exists"
     fi
 
-    exe_live "Syncing pacman database" "sudo pacman -Sy"
+    exe_live "Syncing pacman database" "sudo pacman -Syu"
     exe_live "Installing archlinuxcn-keyring" "sudo pacman -S --noconfirm archlinuxcn-keyring"
     exe_live "Installing paru" "sudo pacman -S --noconfirm paru"
 
