@@ -1,0 +1,415 @@
+#!/bin/bash
+# ==============================================================================
+# title:       gh-mirror
+# description: 安装期 GitHub 镜像加速开关（可独立使用，也可被安装脚本调用）
+# usage:       gh-mirror on | off | status | probe | keep | cleanup | stale-check
+#
+# 为什么需要它：
+#   国内网络下 github.com:443 经常是「TCP 建连被阻断」（curl 错误码 7，21 秒超时），
+#   这时改 /etc/hosts 完全无效 —— hosts 只能决定域名解析到哪个 IP，改不了
+#   「这个 IP 连不上」。唯一的办法是换成能连上的镜像域名。
+#
+# 它改哪两处：
+#   · ~/.makepkg.conf 追加一段 DLAGENTS，把 makepkg 的 https 下载器指向本目录下的
+#     github-dl wrapper（只改写 github 域名，其它原样直连）
+#   · ~/.gitconfig 追加一段 [include]，指向本目录的 gitconfig（里面是 url.insteadOf）
+#     让 git clone / paru 的 devel 检查也走镜像
+#
+#   makepkg 的用户级配置优先级高于 /etc/makepkg.conf（见 makepkg.conf(5)），
+#   所以全程不需要 sudo、也不碰系统文件。
+#
+# 两个已知副作用：
+#   1. git push 会失败 —— 镜像只代理读取，不代写。推送前先 gh-mirror off。
+#   2. -git 类 AUR 包没有 sha256sums 校验，走第三方镜像存在被投毒的理论风险。
+#
+# 所有写入都带标记块，off 按标记精确删除，不会动你标记之外的内容。
+# ==============================================================================
+
+set -uo pipefail
+
+# ------------------------------------------------------------------------------
+# 配置
+# ------------------------------------------------------------------------------
+# 顺序即优先级：前一个失败自动换下一个，全部失败再回退直连
+MIRRORS=(
+    "https://gh-proxy.com"
+    "https://ghfast.top"
+)
+
+# 探测用的「金丝雀」：仓库里一个几 KB 的文本文件。
+# 不用镜像首页做探测 —— 首页常常 200 但转发通道已经坏了，会假阳性。
+CANARY="https://raw.githubusercontent.com/ittuann/GitHub-IP-hosts/refs/heads/main/hosts_single"
+
+RUNDIR="${PULLAUTUMN_GH_MIRROR_RUNDIR:-$HOME/.local/share/pullautumn/gh-mirror}"
+MAKEPKG_CONF="$HOME/.makepkg.conf"
+GITCONFIG="$HOME/.gitconfig"
+
+MARK_BEGIN="# >>> pullautumn gh-mirror >>>"
+MARK_END="# <<< pullautumn gh-mirror <<<"
+
+STATE_FILE="$RUNDIR/state"          # on = 启用中；keep = 启用中且用户选择保留
+WRAPPER="$RUNDIR/github-dl"
+MIRROR_GITCONFIG="$RUNDIR/gitconfig"
+CREATED_FLAG="$RUNDIR/gitconfig-created"   # 记录 ~/.gitconfig 是不是本脚本凭空建的
+
+QUIET=false
+PROBE_ON_ENABLE=true
+for _opt in "${@:2}"; do
+    case "$_opt" in
+        --quiet)    QUIET=true ;;
+        --no-probe) PROBE_ON_ENABLE=false ;;
+    esac
+done
+
+# ------------------------------------------------------------------------------
+# 输出
+# ------------------------------------------------------------------------------
+if [[ -t 1 ]] && [[ -z "${NO_COLOR:-}" ]]; then
+    C_RESET=$'\033[0m'; C_DIM=$'\033[2m'; C_OK=$'\033[32m'
+    C_WARN=$'\033[33m'; C_INFO=$'\033[36m'
+else
+    C_RESET=""; C_DIM=""; C_OK=""; C_WARN=""; C_INFO=""
+fi
+
+say()  { $QUIET || echo -e "$*"; }
+ok()   { $QUIET || echo -e "   ${C_OK}[OK]${C_RESET} $*"; }
+info() { $QUIET || echo -e "   ${C_INFO}[i]${C_RESET} $*"; }
+warn() { $QUIET || echo -e "   ${C_WARN}[!]${C_RESET} $*"; }
+
+# ------------------------------------------------------------------------------
+# 探测
+# ------------------------------------------------------------------------------
+# 真实 GET 取一段字节，要求「状态码 2xx/3xx」且「真的收到了 min 字节」。
+# 只看状态码会在链路半通时误判（上一版 hosts 修复失效的根因之一）。
+# 成功时输出 "code size time"，失败返回 1。
+_probe() {
+    local url="$1" min="$2" tmo="${3:-8}"
+    local out code size time
+    out=$(curl -m "$tmo" -sL --range 0-65535 -o /dev/null \
+              -w '%{http_code} %{size_download} %{time_total}' "$url" 2>/dev/null) || return 1
+    read -r code size time <<< "$out"
+    [[ "$code" =~ ^[23] ]] || return 1
+    [[ "$size" =~ ^[0-9]+$ ]] || return 1
+    (( size >= min )) || return 1
+    echo "$code $size $time"
+    return 0
+}
+
+cmd_probe() {
+    local tmp i host size time p reachable=0
+    local -a pids=()
+    tmp=$(mktemp -d)
+
+    # 三个探测并发跑：串行最坏要 18 秒，并发只要 6 秒左右。
+    # 结果写进各自文件，打印顺序才是固定的（不受完成先后影响）。
+    _probe "https://github.com/" 200 6 > "$tmp/direct" 2>/dev/null &
+    local pid_direct=$!
+    for i in "${!MIRRORS[@]}"; do
+        _probe "${MIRRORS[$i]}/$CANARY" 500 6 > "$tmp/m$i" 2>/dev/null &
+        pids+=($!)
+    done
+    wait "$pid_direct" 2>/dev/null || true
+    for p in "${pids[@]}"; do wait "$p" 2>/dev/null || true; done
+
+    echo ""
+    if [[ -s "$tmp/direct" ]]; then
+        read -r _ size time < "$tmp/direct"
+        printf '   %s[i]%s %-20s: 直连可达 (%sB / %.1fs)\n' \
+            "$C_INFO" "$C_RESET" "github.com" "$size" "$time"
+    else
+        printf '   %s[i]%s %-20s: 直连不可达\n' "$C_INFO" "$C_RESET" "github.com"
+    fi
+
+    for i in "${!MIRRORS[@]}"; do
+        host="${MIRRORS[$i]#https://}"
+        if [[ -s "$tmp/m$i" ]]; then
+            read -r _ size time < "$tmp/m$i"
+            printf '   %s[i]%s %-20s: 镜像可达 (%sB / %.1fs)\n' \
+                "$C_INFO" "$C_RESET" "$host" "$size" "$time"
+            reachable=1
+        else
+            printf '   %s[i]%s %-20s: 镜像不可达\n' "$C_INFO" "$C_RESET" "$host"
+        fi
+    done
+    rm -rf "$tmp"
+    echo ""
+    (( reachable == 1 ))
+}
+
+# ------------------------------------------------------------------------------
+# 生成物
+# ------------------------------------------------------------------------------
+_write_wrapper() {
+    mkdir -p "$RUNDIR"
+    {
+        echo '#!/bin/bash'
+        echo '# 由 pullautumn gh-mirror 生成，请勿手改。'
+        echo '# 供 makepkg 的 DLAGENTS 调用：github-dl <输出文件> <URL>'
+        echo '# 只改写 GitHub 域名，其它 URL 原样交给系统 curl（含官方源、国内镜像）。'
+        echo 'o="$1"; u="$2"'
+        echo 'case "$u" in'
+        echo '  *github.com/*|*raw.githubusercontent.com/*)'
+        echo "    for m in ${MIRRORS[*]}; do"
+        echo '      curl -qgb "" -fLC - --retry 2 --retry-all-errors -o "$o" "$m/$u" && exit 0'
+        echo '    done ;;'
+        echo 'esac'
+        echo 'exec /usr/bin/curl -qgb "" -fLC - --retry 3 --retry-all-errors -o "$o" "$u"'
+    } > "$WRAPPER"
+    chmod +x "$WRAPPER"
+}
+
+_write_mirror_gitconfig() {
+    mkdir -p "$RUNDIR"
+    cat > "$MIRROR_GITCONFIG" << EOF
+# 由 pullautumn gh-mirror 生成，gh-mirror off 时整份删除。
+[url "${MIRRORS[0]}/https://github.com/"]
+	insteadOf = https://github.com/
+EOF
+}
+
+_dlagents_block() {
+    cat << EOF
+$MARK_BEGIN
+# 由 gh-mirror 追加：把 https 下载器换成 github-dl（只改写 GitHub 域名）。
+# DLAGENTS 是数组，这里整份重写，所以其它协议必须一起列出，缺了会让构建失败。
+DLAGENTS=('file::/usr/bin/curl -qgC - -o %o %u'
+          'ftp::/usr/bin/curl -qgfC - --ftp-pasv --retry 3 --retry-delay 3 -o %o %u'
+          'http::/usr/bin/curl -qgb "" -fLC - --retry 3 --retry-delay 3 -o %o %u'
+          'https::$WRAPPER %o %u'
+          'rsync::/usr/bin/rsync --no-motd -z %u %o'
+          'scp::/usr/bin/scp -C %u %o')
+$MARK_END
+EOF
+}
+
+# 删除带标记的整段（保留标记外的所有内容，含用户自己写的东西）
+_strip_block() {
+    local f="$1" tmp
+    [[ -f "$f" ]] || return 0
+    grep -qF "$MARK_BEGIN" "$f" 2>/dev/null || return 0
+    tmp=$(mktemp)
+    awk -v b="$MARK_BEGIN" -v e="$MARK_END" '
+        index($0, b) { skip = 1; next }
+        index($0, e) { skip = 0; next }
+        !skip
+    ' "$f" > "$tmp"
+    # 用 cat 回写而不是 mv，保留原文件的权限与属主
+    cat "$tmp" > "$f"
+    rm -f "$tmp"
+}
+
+# 只含空白 / 空行的文件视为「没内容」
+_is_blank_file() {
+    local f="$1"
+    [[ -f "$f" ]] || return 0
+    ! grep -q '[^[:space:]]' "$f" 2>/dev/null
+}
+
+# ------------------------------------------------------------------------------
+# makepkg 配置（可能存在两份：~/.makepkg.conf 与 $XDG_CONFIG_HOME/pacman/makepkg.conf）
+# XDG 那份优先级更高，所以「存在就一起管」。
+# ------------------------------------------------------------------------------
+_makepkg_targets() {
+    echo "$MAKEPKG_CONF"
+    local xdg="${XDG_CONFIG_HOME:-$HOME/.config}/pacman/makepkg.conf"
+    [[ -f "$xdg" ]] && echo "$xdg"
+    return 0
+}
+
+_patch_makepkg() {
+    local target bak
+    while IFS= read -r target; do
+        [[ -n "$target" ]] || continue
+        bak="${target}.pullautumn-bak"
+        if [[ -f "$target" ]]; then
+            # 备份只在第一次做，重复 on 不会把「已改过的版本」当成原件备份
+            if [[ ! -f "$bak" ]]; then
+                cp -p "$target" "$bak"
+            fi
+            _strip_block "$target"
+        fi
+        _dlagents_block >> "$target"
+        ok "makepkg 配置已接管：$target"
+    done < <(_makepkg_targets)
+}
+
+_restore_makepkg() {
+    local target bak
+    while IFS= read -r target; do
+        [[ -n "$target" ]] || continue
+        bak="${target}.pullautumn-bak"
+        if [[ -f "$bak" ]]; then
+            mv -f "$bak" "$target"
+            ok "makepkg 配置已还原：$target"
+        elif [[ -f "$target" ]]; then
+            _strip_block "$target"
+            if _is_blank_file "$target"; then
+                rm -f "$target"
+                ok "已删除：$target（原本不存在）"
+            else
+                ok "已移除镜像段：$target"
+            fi
+        fi
+    done < <(_makepkg_targets)
+}
+
+# ------------------------------------------------------------------------------
+# git 配置：只追加一个 include 块，off 时按标记精确删除
+# ------------------------------------------------------------------------------
+_patch_gitconfig() {
+    if [[ ! -f "$GITCONFIG" ]]; then
+        : > "$GITCONFIG"
+        mkdir -p "$RUNDIR"
+        : > "$CREATED_FLAG"
+    fi
+    _strip_block "$GITCONFIG"
+    # git 认 ~/ 展开，写 ~ 形式比写死 /home/xxx 更可移植。
+    # 用前缀比较而不是 ${var/#$HOME/~} —— 后者会把 $HOME 里的字符当通配模式，
+    # 一旦路径含 \ 或 * 就匹配不上（Windows/Git Bash 下实测踩到过）。
+    local inc_path="$MIRROR_GITCONFIG"
+    if [[ "$inc_path" == "$HOME/"* ]]; then
+        inc_path="~/${inc_path#"$HOME/"}"
+    fi
+    cat >> "$GITCONFIG" << EOF
+$MARK_BEGIN
+[include]
+	path = $inc_path
+$MARK_END
+EOF
+    ok "git 配置已接管：$GITCONFIG"
+}
+
+_restore_gitconfig() {
+    if [[ -f "$GITCONFIG" ]] && grep -qF "$MARK_BEGIN" "$GITCONFIG" 2>/dev/null; then
+        _strip_block "$GITCONFIG"
+        ok "已移除 include 段：$GITCONFIG"
+    fi
+    rm -f "$MIRROR_GITCONFIG"
+    if [[ -f "$CREATED_FLAG" ]] && _is_blank_file "$GITCONFIG"; then
+        rm -f "$GITCONFIG"
+        ok "已删除：$GITCONFIG（原本不存在）"
+    fi
+    rm -f "$CREATED_FLAG"
+}
+
+# ------------------------------------------------------------------------------
+# 子命令
+# ------------------------------------------------------------------------------
+cmd_on() {
+    mkdir -p "$RUNDIR"
+
+    # 提醒：镜像全挂时仍然写入（尊重调用方的选择），但要说清楚
+    if $PROBE_ON_ENABLE && ! cmd_probe >/dev/null 2>&1; then
+        warn "两个镜像当前都探测不通，配置仍会写入，但安装很可能照旧失败"
+    fi
+
+    _write_wrapper
+    _write_mirror_gitconfig
+    _patch_makepkg
+    _patch_gitconfig
+    echo "on" > "$STATE_FILE"
+
+    $QUIET || echo ""
+    ok "GitHub 镜像加速已启用"
+    info "运行目录：$RUNDIR"
+    info "清除：    gh-mirror off"
+    warn "镜像开着时 git push 会失败（镜像只读不写），推送前先 off"
+    $QUIET || echo ""
+}
+
+cmd_off() {
+    local any=false
+    if [[ -f "$STATE_FILE" ]] || grep -qF "$MARK_BEGIN" "$GITCONFIG" 2>/dev/null; then
+        any=true
+    fi
+    # 顺序很重要：先删 include 行，再删被 include 的文件，
+    # 否则 git 会撞上「include 指向不存在的文件」直接报错。
+    _restore_gitconfig
+    _restore_makepkg
+    rm -f "$STATE_FILE"
+
+    if $any; then
+        $QUIET || echo ""
+        ok "GitHub 镜像加速已清除，paru / git 恢复直连"
+        $QUIET || echo ""
+    else
+        say "   ${C_DIM}当前没有启用，无需清除${C_RESET}"
+    fi
+    return 0
+}
+
+cmd_keep() {
+    mkdir -p "$RUNDIR"
+    echo "keep" > "$STATE_FILE"
+    ok "镜像配置保留"
+    info "以后清除：gh-mirror off"
+}
+
+# 安装中途退出时调用：只有状态为 on 才清理；用户选过 keep 就不动
+cmd_cleanup() {
+    [[ -f "$STATE_FILE" ]] || return 0
+    [[ "$(cat "$STATE_FILE" 2>/dev/null)" == "on" ]] || return 0
+    cmd_off
+}
+
+# 上一轮异常中断（断电 / kill -9）会留下 state；本轮没打算用镜像就清掉
+cmd_stale_check() {
+    [[ -f "$STATE_FILE" ]] || return 1
+    [[ "${PULLAUTUMN_MIRROR:-off}" == "on" ]] && return 1
+    cmd_off
+    return 0
+}
+
+cmd_status() {
+    local state="off"
+    [[ -f "$STATE_FILE" ]] && state=$(cat "$STATE_FILE" 2>/dev/null || echo off)
+    echo ""
+    info "状态      : $state"
+    if grep -qF "$MARK_BEGIN" "$GITCONFIG" 2>/dev/null; then
+        info "git       : $GITCONFIG 含 include 段"
+    else
+        info "git       : 未接管"
+    fi
+    local target found=false
+    while IFS= read -r target; do
+        [[ -n "$target" ]] || continue
+        if grep -qF "$MARK_BEGIN" "$target" 2>/dev/null; then
+            info "makepkg   : $target 含镜像段"
+            found=true
+        fi
+    done < <(_makepkg_targets)
+    $found || info "makepkg   : 未接管"
+    info "运行目录  : $RUNDIR"
+    echo ""
+    [[ "$state" == "off" ]] && return 1
+    return 0
+}
+
+usage() {
+    cat << 'EOF'
+gh-mirror —— 安装期 GitHub 镜像加速开关
+
+用法：
+  gh-mirror on            启用（写 ~/.makepkg.conf 与 ~/.gitconfig，带标记，可精确还原）
+  gh-mirror off           清除，paru / git 恢复直连
+  gh-mirror status        查看当前状态与改了哪些文件
+  gh-mirror probe         只探测连通性，不写任何文件
+  gh-mirror keep          标记为「保留」，让安装脚本退出时不要自动清除
+
+说明：
+  · 不需要 sudo，只动 $HOME 下的用户级配置
+  · 镜像只代理读取，开着时 git push 会失败，推送前先 off
+EOF
+}
+
+case "${1:-}" in
+    on)          cmd_on ;;
+    off)         cmd_off ;;
+    status)      cmd_status ;;
+    probe)       cmd_probe ;;
+    keep)        cmd_keep ;;
+    cleanup)     cmd_cleanup ;;
+    stale-check) cmd_stale_check ;;
+    ""|-h|--help|help) usage ;;
+    *)           echo "未知子命令：$1" >&2; usage >&2; exit 2 ;;
+esac

@@ -8,9 +8,10 @@
 
 | 文件 | 说明 |
 |---|---|
-| `kitty.conf` | 字体、透明度、标签页键位、滚动缓冲、鼠标映射 |
-| `colors.conf` | Catppuccin Mocha 配色，`include` 进主配置 |
-| `themes/matugen.conf` | 换壁纸后 matugen 生成的配色，用 `themes` 命令切换 |
+| `kitty.conf` | 字体、透明度、标签页键位、滚动缓冲、鼠标映射；末尾有 `BEGIN_KITTY_THEME` 标记块 |
+| `colors.conf` | Catppuccin Mocha 默认配色（底层），`include` 进主配置 |
+| `themes/matugen.conf` | 换壁纸后 matugen 生成的配色，gitignore，只作 `kitten themes` 的数据源 |
+| `current-theme.conf` | 当前生效的主题，由 `kitten themes` 从 `themes/matugen.conf` 复制而来，gitignore |
 
 ## 关键配置
 
@@ -48,7 +49,33 @@ kitty @ set-colors --all ~/.config/kitty/themes/matugen.conf  # 立即生效
 
 matugen 的 `post_hook` 里已经写了自动 reload，换壁纸时配色会跟着变。
 
+## 配色是怎么生效的
+
+```
+matugen  →  themes/matugen.conf
+                ↓  kitten themes（post_hook 自动跑）
+           current-theme.conf ──include──┐
+                                         ├→ 同名项后者覆盖前者
+           colors.conf  ──────include────┘
+```
+
+`kitty.conf` 里有两处 `include`，顺序决定优先级：
+
+1. `include colors.conf` —— 仓库跟踪的默认配色，matugen 没跑过时的兜底
+2. `BEGIN_KITTY_THEME` 标记块里的 `include current-theme.conf` —— 当前主题
+
+**标记块不能删。** `kitten themes` 找不到 `BEGIN_KITTY_THEME` / `END_KITTY_THEME` 这对标记时，
+会把 `include current-theme.conf` 追加到 `kitty.conf` 末尾；而 `~/.config/kitty` 是 stow 软链，
+追加就等于改写仓库文件。有标记块时它只替换块内内容，`kitty.conf` 永不被写。
+
+`current-theme.conf` 不进仓库（见 `.gitignore`），首次安装由
+`scripts/matugen-restore.sh` 用 `matugen/custom/kitty/colors.conf` 生成。
+
 ## 注意
 
+- `current-theme.conf` 是运行时文件，每次换壁纸都会被重写，**不要手改**。想自定义配色改
+  `colors.conf`；但它会被 `current-theme.conf` 覆盖，所以要让改动生效，得先切到别的主题
+  （`kitty +kitten themes`），或者直接删掉 `current-theme.conf` —— include 缺文件只会记一条
+  `Could not find included config file`，不阻塞启动。
 - `JetBrainsMapleMono` 来自 AUR 的 `ttf-jetbrains-maple-mono-nf-xx-xx`，没装的话字体会回退成系统等宽字体。
 - `listen_on` 用的是 `/tmp` 下的 socket，多用户机器上其他人理论上能 `kitty @` 控制你的终端，介意就注释掉。

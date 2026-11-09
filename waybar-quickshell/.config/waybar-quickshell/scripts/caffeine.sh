@@ -68,14 +68,32 @@ stop_inhibitor() {
     pkill -f "systemd-inhibit.*Caffeine" 2>/dev/null || true
 }
 
+# 状态变化时弹通知
+# 注意：绝不能放进 output() —— custom/caffeine 的 interval 是 5 秒，
+# 每 5 秒跑一次 caffeine.sh waybar 都会走到 output()，那样会一直刷通知。
+# 只在状态真正改变的三处（toggle / on / off）调用。
+notify_state() {
+    local state="$1"
+    command -v notify-send >/dev/null 2>&1 || return 0
+    if [[ "$state" == "on" ]]; then
+        notify-send -a "Caffeine" -i dialog-information \
+            "咖啡模式已开启" "屏幕保持常亮，不会自动息屏或锁屏" >/dev/null 2>&1 || true
+    else
+        notify-send -a "Caffeine" -i dialog-information \
+            "咖啡模式已关闭" "已恢复自动息屏与锁屏" >/dev/null 2>&1 || true
+    fi
+}
+
 # 切换状态
 toggle() {
     if [[ "$(get_state)" == "on" ]]; then
         stop_inhibitor
         echo "off" > "$STATE_FILE"
+        notify_state off
     else
         echo "on" > "$STATE_FILE"
         start_inhibitor
+        notify_state on
     fi
     
     # 输出新状态供 waybar 更新
@@ -124,11 +142,13 @@ case "${1:-status}" in
     on)
         echo "on" > "$STATE_FILE"
         start_inhibitor
+        notify_state on
         output
         ;;
     off)
         stop_inhibitor
         echo "off" > "$STATE_FILE"
+        notify_state off
         output
         ;;
     status|waybar)

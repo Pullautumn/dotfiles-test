@@ -34,7 +34,7 @@
 |---|---|---|
 | `matugen-update.sh` | 总入口：读壁纸 → 调 `matugen image` → 处理策略与明暗 → 触发重载 | waypaper 的 `post_command`、`matugen-select-type.sh`、`random-anime-wallpaper.sh` |
 | `matugen-select-type.sh` | 交互式切换配色策略，结果缓存在 `~/.cache/matugen-strategy/type` | `Mod+Alt+M` / `Mod+Alt+T` |
-| `matugen-restore.sh` | 系统级还原：清图标缓存、按缓存重新生成整套配色 | 手动 |
+| `matugen-restore.sh` | 还原默认配色：按 `custom/` 拷回配置文件 + 清图标缓存。`--configs-only` 只做文件还原，不碰 GSettings / fcitx / 缓存 | 手动；安装器 Phase 8 用 `--configs-only` |
 | `niri_auto_blur_bg.sh` | 生成 overview 用的模糊 + 变暗背景，并跟随当前壁纸自动重算（缓存命中则直接贴图） | waypaper 的 `post_command`（紧跟 matugen-update 后）、`niri/conf.d/autostart.kdl` 开机启动、Win11Like 状态栏中键、`random-anime-wallpaper.sh` |
 | `random-anime-wallpaper.sh` | 从在线 API 随机下载动漫壁纸并设为壁纸 | `Mod+Shift+F10` |
 | `wallpaper-rotate.sh` | 开机「自动随机换壁纸」的开关，状态存 `~/.cache/wallpaper-auto-rotate` | `niri/conf.d/autostart.kdl` 开机启动、`Mod+Ctrl+F10`、手动 |

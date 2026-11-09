@@ -119,12 +119,12 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 
 | 阶段 | 函数 | 作用 |
 |---|---|---|
-| Pre-Flight | `check_system` | 校验 Arch、非 root、pacman 可用、有网络 |
+| Pre-Flight | `check_system` | 校验 Arch、非 root、pacman 可用、有网络；顺带探测 GitHub 直连，不通就用 hosts 修（不改变 URL，不影响校验和与签名），修不好自动回滚 |
 | Phase 1 | `install_base` | `pacman -Syu`，装 `git` `stow` `base-devel` |
 | Phase 2 | `install_aur_helper` | 加 archlinuxcn 源，装 `paru`（已有 paru/yay 则直接复用） |
 | Phase 3 | `clone_dotfiles` | 本地运行时直接用当前目录，否则克隆到 `~/.dotfiles` |
-| Phase 4 | `install_packages` | 按 20 个包组装 90 个仓库包 |
-| Phase 4b | 同上 | 装 7 个必需 AUR 包（逐包显示进度，不询问） |
+| Phase 4 | `install_packages` | 按 21 个包组安装 100 个包 |
+| Phase 4b | 同上 | 装 12 个必需 AUR 包（逐包显示进度，不询问） |
 | Phase 4c | `install_optional_packages` | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装 |
 | Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接 → 脚本权限 → 生成 GTK 书签 → flatpak 主题放行 |
 | Phase 6a | `setup_nvim` | 装 Neovim，`Lazy! sync` 拉齐插件，可选装 LSP 依赖 |
@@ -136,7 +136,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 7c | `setup_local_bin` | 给 `~/.local/bin` 与各 `scripts/` 里的脚本加执行权限 |
 | Phase 7d | `setup_qs_lock_pam` | 创建 `/etc/pam.d/qs-lock`（缺 howdy 时会询问是否安装，有 howdy 再加 `qs-lock-face` 并自动探测 PAM 模块），否则锁屏无法验证密码 |
 | Phase 7e | `setup_quickshell` | 兜底 `Theme.js`、`uv sync` 装 Quickshell 依赖、注册（不启用）`qs-notifications.service` |
-| Phase 8 | `setup_matugen` | 用当前壁纸生成一次 Material You 配色 |
+| Phase 8 | `setup_matugen` | 应用仓库自带的默认配色（首次不跑 matugen，换壁纸后才生成） |
 | Phase 8b | `setup_desktop_tweaks` | 默认终端、窗口按钮、i2c 权限等桌面细节 |
 | Phase 9 | `enable_services` | 启用 NetworkManager、蓝牙、swayosd |
 | Phase 9b | `setup_sddm` | 装 SDDM + lunar-glass 主题，写 `/etc/sddm.conf.d/10-lunar-glass.conf`，`enable` 但不 `start`（可跳过） |
@@ -216,7 +216,14 @@ ls -l /lib/security/howdy/pam.py        # B. Python 桥
 | `--yes` | 全程自动确认，可选软件按清单全部安装，不弹任何询问 |
 | `--no-reboot` | 装完不自动重启 |
 | `--reset` | 清空进度记录，从头开始 |
+| `--mirror` | 跳过询问，直接启用 GitHub 镜像加速（装完仍会问是否清除） |
+| `--no-mirror` | 跳过询问，不使用镜像 |
 | `--help` | 显示帮助 |
+
+> 每次安装开头都会问一次「是否启用 GitHub 镜像加速」，必须回答 `y` 或 `n`
+> （回车不算），`--yes` 与非交互环境下自动按「不启用」处理。
+> 它治的是 `curl: (7) Failed to connect to github.com:443` 这类链路阻断，
+> 与 `/etc/hosts` 修的 DNS 污染是两回事。详见 `setup/README.md`。
 
 ### 手动安装
 
@@ -240,7 +247,7 @@ cd ~/dotfiles
 **③ 装包**
 
 ```bash
-# 必需仓库包（20 组）
+# 必需仓库包（21 组）
 paru -S --needed \
     niri xwayland-satellite awww swayidle swayosd polkit-gnome \
     xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
@@ -248,23 +255,25 @@ paru -S --needed \
     wlogout grim slurp wayfreeze wf-recorder imv ffmpeg \
     cliphist wl-clipboard xclip kitty starship \
     zsh atuin zoxide fzf thefuck fnm \
-    thunar thunar-volman thunar-archive-plugin tumbler gvfs gvfs-mtp gvfs-smb \
+    thunar thunar-volman thunar-archive-plugin tumbler nautilus gvfs gvfs-mtp gvfs-smb \
     ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring \
-    fcitx5 fcitx5-im fcitx5-chinese-addons \
+    fcitx5 fcitx5-im fcitx5-chinese-addons fcitx5-rime \
     pipewire wireplumber pipewire-pulse pipewire-alsa pavucontrol playerctl \
     networkmanager network-manager-applet nm-connection-editor bluez bluez-utils blueman \
     ripgrep fd bat eza jq curl wget unzip bc duf fastfetch prettyping \
     pacman-contrib unarchiver lazygit lazydocker btop \
-    noto-fonts-cjk ttf-jetbrains-mono-nerd ttf-cascadia-code-nerd \
-    python python-pip nodejs npm mpv yazi brightnessctl wlsunset \
-    google-chrome firefox
+    noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-liberation otf-font-awesome \
+    ttf-jetbrains-mono-nerd ttf-cascadia-code-nerd \
+    python python-pip nodejs npm mpv yazi cava brightnessctl wlsunset \
+    adw-gtk-theme google-chrome firefox
 
-# 必需附加包（12 个，交给 paru：AUR 包 + 已在官方仓库的 matugen/quickshell）
+# 必需附加包（14 个，交给 paru：AUR 包 + 已在官方仓库的 matugen/quickshell）
 paru -S --needed \
     matugen waypaper-git python-pywalfox \
     ttf-jetbrains-maple-mono-nf-xx-xx ttf-lxgw-wenkai-screen \
     niri-sidebar-git wl-screenrec-git \
     quickshell uv zsh-patina \
+    rime-ice-git cliphist-tui-git \
     mark-shot wayscrollshot-bin
 ```
 
@@ -312,17 +321,13 @@ systemctl --user daemon-reload
 **⑥ 家目录路径（基本不用管了）**
 
 配置里能自解析的都已改成 `~` / `$HOME` / `vim.fn.expand`，不再需要批量替换用户名。
-只剩两处例外：
+只剩一处例外：
 
 1. **GTK 书签** `~/.config/gtk-3.0/bookmarks` —— GTK 只认绝对 `file://` URI，不支持 `~`。
    仓库里不再放这个文件，安装器会按当前 `$HOME` 现生成；手动装不生成也行，GTK 会自己写一份默认的。
-2. **niri 截图路径** —— `~/.config/niri/conf.d/environment.kdl` 的 `screenshot-path`
-   只接受绝对路径，装完自己改一下：
 
-```bash
-sed -i "s|/home/pullautumn|$HOME|g" ~/.config/niri/conf.d/environment.kdl
-mkdir -p ~/Pictures/Screenshots
-```
+niri 的 `screenshot-path` 写 `~/Pictures/Screenshots/...` 就行：niri 会把开头的 `~` 展开成家目录，
+并在最后一级目录不存在时自动创建，不需要安装器代改，也不用自己 `mkdir`。
 
 > ⚠️ 别再对整个 `~/.config` 跑 `sed -i`。stow 会把多数包目录折叠成指向 `~/dotfiles`
 > 的软链，改 `~/.config` 下的文件等于直接改写仓库 —— `git status` 会变脏，
@@ -345,7 +350,7 @@ sudo systemctl enable sddm           # 用 SDDM 作为登录入口（lunar-glass
 
 ### 必需软件
 
-**仓库包（90 个，20 组，按组安装失败不影响其他组）**
+**包清单（100 个，21 组，按组安装失败不影响其他组）**
 
 | 组 | 包 |
 |---|---|
@@ -357,19 +362,20 @@ sudo systemctl enable sddm           # 用 SDDM 作为登录入口（lunar-glass
 | 锁屏 | `quickshell`（lockscreen 组件，入口 `qs-lock`） |
 | 电源菜单 | `wlogout` |
 | 截图录屏 | `grim` `slurp` `wayfreeze` `wf-recorder` `imv` `ffmpeg` |
-| 剪贴板 | `cliphist` `wl-clipboard` `xclip` |
+| 剪贴板 | `cliphist` `wl-clipboard` `xclip` `cliphist-tui-git` |
 | 终端 | `kitty` `starship` |
 | Shell | `zsh` `atuin` `zoxide` `fzf` `thefuck` `fnm` |
-| 文件管理 | `thunar` `thunar-volman` `thunar-archive-plugin` `tumbler` `gvfs` `gvfs-mtp` `gvfs-smb` `ffmpegthumbnailer` `poppler-glib` `file-roller` `webp-pixbuf-loader` `gnome-keyring` |
-| 输入法 | `fcitx5` `fcitx5-im` `fcitx5-chinese-addons` |
+| 文件管理 | `thunar` `thunar-volman` `thunar-archive-plugin` `tumbler` `nautilus` `gnome-text-editor` `gvfs` `gvfs-mtp` `gvfs-smb` `ffmpegthumbnailer` `poppler-glib` `file-roller` `webp-pixbuf-loader` `gnome-keyring` |
+| 输入法 | `fcitx5` `fcitx5-im` `fcitx5-chinese-addons` `fcitx5-rime` `rime-ice-git` |
 | 音频 | `pipewire` `wireplumber` `pipewire-pulse` `pipewire-alsa` `pavucontrol` `playerctl` |
 | 网络与蓝牙 | `networkmanager` `network-manager-applet` `nm-connection-editor` `bluez` `bluez-utils` `blueman` |
 | 命令行工具 | `ripgrep` `fd` `bat` `eza` `jq` `curl` `wget` `unzip` `bc` `duf` `fastfetch` `prettyping` `pacman-contrib` `unarchiver` `lazygit` `lazydocker` `btop` |
-| 字体 | `noto-fonts-cjk` `ttf-jetbrains-mono-nerd` `ttf-cascadia-code-nerd` |
+| 字体 | `noto-fonts` `noto-fonts-cjk` `noto-fonts-emoji` `ttf-liberation` `otf-font-awesome` `ttf-jetbrains-mono-nerd` `ttf-cascadia-code-nerd` |
 | 开发环境 | `python` `python-pip` `nodejs` `npm` |
-| 媒体 | `mpv` `yazi` |
+| 媒体 | `mpv` `yazi` `cava` |
 | 亮度色温 | `brightnessctl` `wlsunset` |
 | 浏览器 | `google-chrome` `firefox` |
+| GTK 主题 | `adw-gtk-theme`（提供 `adw-gtk3` / `adw-gtk3-dark`，明暗切换用） |
 
 **附加包（12 个，配置直接依赖）**
 
@@ -465,12 +471,54 @@ waybar:~/.config/waybar
 
 ## 常见问题
 
+**AUR 包一个都没装上 / 日志里全是 `Failed to connect to github.com:443`**
+
+这是 TCP 层被阻断，不是包的问题。makepkg 下载 `source` 走 curl、`-git` 包走
+`git clone`，两条路径都要连 `github.com`。
+
+安装器在 Pre-Flight 阶段会自动探测并尝试用 `/etc/hosts` 修好：只改域名解析、
+不改变 URL，所以 `sha256sums` 与 PGP 签名校验照常通过。写完会再探测一次，
+仍不通就回滚到原始 hosts，不留半坏状态。
+
+修不好时 Phase 4b 会停下来问你「继续 / 跳过 AUR / 退出」，不再像以前那样逐个
+超时 21 秒后静默失败。装完还会用 `pacman -T` 复核全部 100 个包 + 12 个 AUR 包，
+缺的会打成 `MISSING PACKAGES` 写进日志：
+
+```bash
+grep 'MISSING PACKAGES' ~/install-*.log | tail -1
+paru -S --needed 上面列出的那些包名
+```
+
+如果有代理，直接走代理最省事（`sudo` 会清环境变量，必须 `-E`）：
+
+```bash
+export https_proxy=http://127.0.0.1:7890 http_proxy=http://127.0.0.1:7890
+sudo -E ./install.sh
+```
+
+注意 `git config --global http.proxy` 对 makepkg 里的 curl **无效**，只有环境变量管用。
+
+装完后不想再让 hosts 生效：
+
+```bash
+sudo sed -i '/# GitHub IP hosts Start/,/# GitHub IP hosts End/d' /etc/hosts
+```
+
 **状态栏图标显示成方块**
 
 Nerd Font 没装上或没生效：
 
 ```bash
 paru -S ttf-jetbrains-mono-nerd ttf-cascadia-code-nerd
+fc-cache -fv
+```
+
+**状态栏个别图标（💤 ☕ 🎵）是空白，不是方块**
+
+这类字符属于 Unicode Emoji 区，Nerd Font 里没有对应字形，靠 `noto-fonts-emoji` 兜底：
+
+```bash
+sudo pacman -S --needed noto-fonts-emoji
 fc-cache -fv
 ```
 
@@ -483,6 +531,17 @@ export GTK_IM_MODULE=fcitx
 export QT_IM_MODULE=fcitx
 export XMODIFIERS=@im=fcitx
 ```
+
+**左 Shift 切不了中英文**
+
+左 Shift 来自 Rime 的 `ascii_composer/switch_key`（默认 `Shift_L: commit_code`），不是 fcitx5 的全局热键 —— 全局 `AltTriggerKeys` 是 `Shift+Shift_R`，只管右 Shift。所以 rime 没装时左 Shift 会完全失效，而中文仍然能打。
+
+```bash
+pacman -Q fcitx5-rime rime-ice-git   # 两个都要在
+fcitx5-remote -n                     # 期望 rime，若是 pinyin 说明 rime 没加载
+```
+
+缺包就 `paru -S fcitx5-rime rime-ice-git`，再 `fcitx5-remote -r`；首次会编译词库，等十几秒。
 
 **壁纸没了 / waypaper 打不开壁纸目录**
 
@@ -515,9 +574,25 @@ sudo systemctl enable --now ly@tty1     # 之前装过 ly 的话
 niri-session
 ```
 
-大概率是 greeter 的合成器起不来：编辑 `/etc/sddm.conf.d/10-lunar-glass.conf`，
-把 `CompositorCommand=kwin_wayland ...` 换成 `weston --shell=kiosk`（装 `weston`），
-或者整段删掉让 SDDM 退回 X11 greeter（需要 `xorg-server` `xorg-xauth`）。
+大概率是 greeter 的合成器起不来。本仓库沿用上游 jswysnemc 的做法，用
+`CompositorCommand=kwin_wayland --no-lockscreen --no-global-shortcuts --locale1`
+（在 `/etc/sddm.conf.d/10-lunar-glass.conf` 里），先确认 `kwin` 装了：
+
+```bash
+pacman -Q kwin || sudo pacman -S kwin
+```
+
+还不行就换路子：
+
+- **退回 X11 greeter**：把 `DisplayServer=wayland` 改成 `x11`，删掉整个 `[Wayland]` 段
+  （`xorg-server` `xorg-xauth` 一般已作为 sddm 的依赖装好）
+- **完全不装 SDDM**：`sudo systemctl disable sddm`，TTY 登录后 `niri-session`
+
+> **先排除虚拟机 3D**：如果 `sudo dmesg | grep 'shader model'` 返回
+> `Available shader model: Legacy`，或者 `niri --config /dev/null` 也只停在
+> `loaded config from "/dev/null"` 就没了，那就不是 SDDM、也不是 greeter 的问题 ——
+> 是虚拟机没开 3D 加速，niri 建不出 renderer，一个输出都产不出来。
+> VMware：虚拟机设置 → 显示 → 勾「加速 3D 图形」，然后**完全关机**（不是 guest 内重启）再开机。
 
 **锁屏输密码一直失败**
 
@@ -533,15 +608,15 @@ paru -S quickshell-git
 
 配置本身已经不含用户名了（都用 `~` / `$HOME`），剩下要自己看一眼的只有
 [第 ⑥ 步](#手动安装)列的那两处：GTK 书签由安装器按 `$HOME` 现生成，
-niri 的 `environment.kdl` 截图路径装完会提示你改。
-
 **显示器布局不对 / 只有一个屏亮**
 
 编辑 `~/.config/niri/conf.d/output.kdl`，把输出名改成 `niri msg outputs` 里看到的实际名字。
 
-**配色没生成，waybar 报错缺颜色文件**
+**配色没生成 / 状态栏缺 colors.css**
 
-matugen 至少需要跑一次：
+首次安装**不跑** matugen，用的是仓库自带的默认配色（`matugen-restore.sh --configs-only`）。
+但 `waybar-niri-Win11Like` 和 `waybar-quickshell` 的 `colors.css` 只能由 matugen 生成，
+首次进桌面时它们不存在，状态栏会回落到默认色——不影响使用。想补上就换一次壁纸：
 
 ```bash
 waypaper                                    # 选张壁纸，会自动触发
@@ -553,10 +628,34 @@ matugen image ~/Pictures/Wallpapers/xxx.jpg
 
 视为一项都不装，安装流程继续往下走。想重来就重跑安装器（已完成阶段会跳过，只重新弹可选软件与 4b）。若终端里找不到 fzf 或没有可用 TTY，这一阶段会打印提示并跳过，全程无人值守请直接用 `--yes`。
 
+**blueman 提示「蓝牙守护进程没有运行」**
+
+`bluetooth.service` 是 enabled 但没在跑。bluez 的 unit 带 `ConditionPathIsDirectory=/sys/class/bluetooth`、且**没有** `Restart=`：开机时内核模块（`btusb`）比服务晚加载，systemd 就直接跳过启动，之后也不会自己再试一次。
+
+```bash
+ls /sys/class/bluetooth                 # 空目录或不存在 = 模块没加载
+systemctl status bluetooth --no-pager   # 常见 inactive (dead) + condition failed
+sudo systemctl restart bluetooth        # 绝大多数情况这一条就够
+```
+
+重启后恢复正常就不用管了。如果每次开机都这样，可以给它清掉前置条件并先加载模块：
+
+```bash
+sudo systemctl edit bluetooth
+# 写入：
+# [Unit]
+# ConditionPathIsDirectory=
+# [Service]
+# ExecStartPre=-/usr/bin/modprobe btusb
+sudo systemctl restart bluetooth
+```
+
+安装器在 Phase 9 会单独 `start` 一次并自检（不用 `enable --now`，因为条件不满足时它仍返回 0），未运行时完成页会直接给出上面那条 `restart` 命令。
+
 ## 说明
 
 - **必需软件**写在 `setup/lib/config.sh`，可选软件写在 `setup/common-applist.txt`，`setup/niri-applist.txt` 是整理时的原始参考清单，安装器不读取。
-- **家目录路径**：能自解析的配置都已写成 `~` / `$HOME` / `vim.fn.expand`，装到任何用户名下都成立。只有 GTK 书签（必须绝对 `file://` URI）由安装器按 `$HOME` 现生成，niri 的 `screenshot-path` 只提示不代改。安装器**不会**再对 `~/.config` 做批量 `sed` —— stow 会把目录折叠成软链，那样改等于直接改写仓库。
+- **家目录路径**：能自解析的配置都已写成 `~` / `$HOME` / `vim.fn.expand`，装到任何用户名下都成立。只有 GTK 书签（必须绝对 `file://` URI）由安装器按 `$HOME` 现生成；niri 的 `screenshot-path` 直接写 `~`，由 niri 自己展开并创建目录。安装器**不会**再对 `~/.config` 做批量 `sed` —— stow 会把目录折叠成软链，那样改等于直接改写仓库。
 - **备份**：部署前会把 `~/.config` 下的同名目录移到 `~/.config-backup-<时间戳>`，不会直接删除。`~/.local/bin` 这类共享目录交给 stow 合并，不整体搬走。
 - **`waybar-niri-Win11Like`** 部署到 `~/.config/waybar-niri-Win11Like`，与主 waybar 互不影响，两套样式都会装好，用 `Mod+F2`（主样式）/ `Mod+F3`（Win11 风格）随时切换。
 - **`waybar-quickshell`** 部署到 `~/.config/waybar-quickshell`，形态与上一套相同，但它的弹窗、面板、启动器、剪贴板全部由 `~/.config/quickshell` 里的 QML 组件提供。三套样式统一用 `~/.config/scripts/switch-waybar.sh` 切换（`Mod+F2`/`F3`/`F4`），切换时会连带切换通知后端：Quickshell 样式用 `qs-notifications.service`，另两套用 `swaync`。两者都要独占 D-Bus 的 `org.freedesktop.Notifications`，所以不能同时运行。剪贴板不需要切换，Quickshell 的 clipboard 组件读的就是同一个 `cliphist` 数据库。

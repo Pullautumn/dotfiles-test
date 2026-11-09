@@ -6,6 +6,7 @@
 
 | 文件 | 作用 |
 |---|---|
+| `gh-mirror` | GitHub 镜像加速开关（安装期 / 补装期用，`on` / `off` / `status` / `probe`） |
 | `niri-session-wlroots` | 用 `wlroots` 作为 `XDG_CURRENT_DESKTOP` 启动 niri |
 | `qs-lock` | 启动 Quickshell 锁屏（`Mod+Alt+L`、空闲超时、电源菜单都走它） |
 | `qs-popup` | Quickshell 弹窗调度器（waybar-quickshell 的每个按钮都调它） |
@@ -112,3 +113,17 @@ niri 里 `Mod+F5` 存档、`Mod+F8` 读档。
 - 恢复快照本身是危险操作，`quickload -n` 不给二次确认；不熟悉就先 `-l` 看看，别直接 `-n`。
 - 这两个脚本带 `set -euo pipefail`，任何一步失败都会立刻中止——这是有意的，避免半途恢复。
 - `~/.local/bin` 是 stow 会合并的共享目录，安装器**不会**备份或整体替换它，只往里加文件。
+
+## gh-mirror
+
+安装脚本开头的「是否启用 GitHub 镜像加速」就是调它。装完想手动补装时也能直接用：
+
+```bash
+gh-mirror on         # 启用（改 ~/.makepkg.conf 与 ~/.gitconfig，带标记，可精确还原）
+gh-mirror status     # 看状态和改了哪些文件
+gh-mirror off        # 清除，paru / git 恢复直连
+```
+
+只治「能解析但连不上」（`curl: (7)`）这种链路阻断，不治 DNS 污染（那种用 hosts）。
+镜像开着时 `git push` 会失败 —— 镜像只代理读取。完整说明见 `setup/README.md`
+的「GitHub 镜像加速」一节。

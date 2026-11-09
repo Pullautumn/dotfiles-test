@@ -24,6 +24,11 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/install-$(date +%Y%m%d-%H%M%S).log"
 STATE_FILE="$HOME/.pullautumn_install_progress"
 
+# 装失败的包会落盘成一份可直接复制粘贴的清单（重启后照着补装）
+PENDING_LIST_FILE="$HOME/pullautumn-missing-packages.txt"
+declare -ga FAILED_PACKAGES=()   # 逐包安装时失败的包名
+declare -ga MISSING_PACKAGES=()  # 末尾 pacman -T 核对出的缺失包名（包组已展开）
+
 # Install options
 INSTALL_MINIMAL=false
 SKIP_STOW=false
@@ -39,7 +44,7 @@ TARGET_HOME="$HOME"
 # 安装器**不再**拿它做全仓库批量替换（那会把 ~/.dotfiles 改写成别人的用户名）。
 # 现在配置里能自解析的都已改成 ~ / $HOME / vim.fn.expand；剩余例外：
 #   · GTK 书签 → 安装时按 $HOME 重新生成（见 03-dotfiles.sh: _dotfiles_generate_bookmarks）
-#   · niri 的 screenshot-path → 只提示，不代改
+#   · niri 的 screenshot-path → 写 ~，由 niri 自己展开并建目录
 LEGACY_USER="pullautumn"
 
 # ==============================================================================
@@ -85,12 +90,12 @@ PKG_GROUPS[screenshot]="grim slurp wayfreeze wf-recorder imv ffmpeg"
 PKG_GROUPS[clipboard]="cliphist wl-clipboard xclip cliphist-tui-git"
 PKG_GROUPS[terminal]="kitty starship"
 PKG_GROUPS[shell]="zsh atuin zoxide fzf thefuck fnm"
-PKG_GROUPS[files]="thunar thunar-volman thunar-archive-plugin tumbler nautilus gvfs gvfs-mtp gvfs-smb ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring"
-PKG_GROUPS[input]="fcitx5 fcitx5-im fcitx5-chinese-addons"
+PKG_GROUPS[files]="thunar thunar-volman thunar-archive-plugin tumbler nautilus gnome-text-editor gvfs gvfs-mtp gvfs-smb ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring"
+PKG_GROUPS[input]="fcitx5 fcitx5-im fcitx5-chinese-addons fcitx5-rime rime-ice-git"
 PKG_GROUPS[audio]="pipewire wireplumber pipewire-pulse pipewire-alsa pavucontrol playerctl"
 PKG_GROUPS[network]="networkmanager network-manager-applet nm-connection-editor bluez bluez-utils blueman"
 PKG_GROUPS[cli]="ripgrep fd bat eza jq curl wget unzip bc duf fastfetch prettyping pacman-contrib unarchiver lazygit lazydocker btop"
-PKG_GROUPS[fonts]="noto-fonts-cjk ttf-jetbrains-mono-nerd ttf-cascadia-code-nerd"
+PKG_GROUPS[fonts]="noto-fonts noto-fonts-cjk noto-fonts-emoji ttf-liberation otf-font-awesome ttf-jetbrains-mono-nerd ttf-cascadia-code-nerd"
 PKG_GROUPS[dev]="python python-pip nodejs npm"
 PKG_GROUPS[media]="mpv yazi cava"
 PKG_GROUPS[power]="brightnessctl wlsunset"
@@ -108,7 +113,7 @@ PKG_GROUP_NAMES=(
     "clipboard:剪贴板 (cliphist + cliphist-tui)"
     "terminal:终端与提示符 (kitty/starship)"
     "shell:Shell 增强 (zsh/atuin/zoxide)"
-    "files:文件管理 (thunar/nautilus)"
+    "files:文件管理与文本编辑 (thunar/nautilus/gnome-text-editor)"
     "input:输入法 (fcitx5)"
     "audio:音频 (pipewire)"
     "network:网络与蓝牙"

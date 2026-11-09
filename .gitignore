@@ -25,11 +25,14 @@ fcitx5/.config/fcitx5/conf/classicui
 fcitx5/.config/fcitx5/conf/notifications.conf
 fcitx5/.config/fcitx5/profile
 fuzzel/.config/fuzzel/colors.ini
-kitty/.config/kitty/current-theme.conf
 # kitty.conf 是手写配置（字体/透明度/键位），仓库里没有任何程序生成它，必须提交。
 # 只有编辑器留下的 .bak 才忽略。
 kitty/.config/kitty/kitty.conf.bak
 kitty/.config/kitty/themes/
+# current-theme.conf 是 matugen 换壁纸时由 `kitten themes` 生成的主题文件，
+# 内容随壁纸变化，不进仓库。kitty.conf 里的 BEGIN_KITTY_THEME 标记块引用它；
+# 首次安装由 scripts/matugen-restore.sh 用 custom/kitty/colors.conf 生成。
+kitty/.config/kitty/current-theme.conf
 local-share-fcitx5/.local/share/fcitx5/rime/installation.yaml
 local-share-fcitx5/.local/share/fcitx5/rime/rime_ice.userdb/
 local-share-fcitx5/.local/share/fcitx5/rime/sync
@@ -43,8 +46,9 @@ mpv/.config/mpv/watch_later/
 .marscode/
 # NiriMod 写入残留的临时文件（正常情况会自己清理，被 kill 时会留下）
 niri/.config/niri/.nirimod_tmp_*
-# matugen 生成的边框色，NiriMod 每次保存都会重新序列化它
-niri/.config/niri/conf.d/colors.kdl
+# matugen 换壁纸时生成的边框色。默认配色在同目录的 colors.kdl（仓库跟踪、随 stow 部署），
+# 这个文件只存生成物，由 config.kdl 用 optional include 叠在默认值上面。
+niri/.config/niri/conf.d/colors-generated.kdl
 # NiriMod 的配置快照（跟随 niri 配置目录，会落在仓库里）
 niri/.config/niri/profiles/
 niri/.config/niri/scripts/venv

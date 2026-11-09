@@ -15,6 +15,7 @@ source "$SETUP_DIR/lib/ui.sh"
 source "$SETUP_DIR/lib/exec.sh"
 source "$SETUP_DIR/lib/state.sh"
 source "$SETUP_DIR/lib/flatpak.sh"
+source "$SETUP_DIR/lib/network.sh"
 
 for step in "$SETUP_DIR/steps/"*.sh; do
     source "$step"

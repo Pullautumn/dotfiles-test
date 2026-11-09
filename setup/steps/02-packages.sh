@@ -34,10 +34,174 @@ _install_each() {
         fi
 
         echo -e "   ${YELLOW}[i]${NC} 安装 $p"
-        exe_spin "$p" "${cmd[@]}" "$p" || failed=$((failed + 1))
+        if exe_spin "$p" "${cmd[@]}" "$p"; then
+            :
+        else
+            failed=$((failed + 1))
+            FAILED_PACKAGES+=("$p")
+        fi
     done
 
     return $failed
+}
+
+# AUR 前置网络闸门
+# 01-preflight 已经尝试用 hosts 修过一次；这里再测一次，仍不通就别让 12 个包
+# 逐个超时 21 秒再一起失败 —— 那既浪费时间，也会把"装成功了"的假象留给用户。
+# 返回 0 = 继续装 AUR，1 = 跳过
+_aur_network_gate() {
+    # 安装开头已经问过并启用了镜像：后面一律不再问，也不重复探测。
+    # 这里直接放行是安全的 —— 镜像真的不可用时，失败包会进补装清单。
+    if [[ "${PULLAUTUMN_MIRROR:-off}" == "on" ]]; then
+        print_ok "GitHub 镜像加速生效中，AUR 包直接安装"
+        log "AUR gate: mirror active, continue"
+        return 0
+    fi
+
+    if _gh_reachable; then
+        return 0
+    fi
+
+    echo ""
+    print_warn "GitHub 仍不可达，AUR 包会逐个超时失败"
+    print_info "  1) 继续尝试"
+    print_info "  2) 跳过 AUR 包（推荐）"
+    print_info "  3) 退出安装，先配好代理再重跑"
+
+    if [[ "${ASSUME_YES:-false}" == "true" ]]; then
+        print_warn "非交互模式（--yes）：自动跳过 AUR 包"
+        return 1
+    fi
+
+    local choice=""
+    echo -ne "   ${YELLOW}[?]${NC} 选择 [1/2/3，默认 2]: "
+    if _tty_ok; then
+        read -r choice < /dev/tty || choice=""
+    else
+        read -r choice || choice=""
+    fi
+
+    case "${choice:-2}" in
+        1) print_warn "继续，预计大量失败"; return 0 ;;
+        3)
+            print_fail "已退出。配置代理后重跑：sudo -E ./install.sh"
+            exit 1
+            ;;
+        *) print_skip "跳过 AUR 包"; return 1 ;;
+    esac
+}
+
+# 装完统一核对：把 21 个包组 + AUR 清单展开去重后交给 pacman -T，
+# 它会把「未安装或不满足」的条目原样打出来。
+# 注意 pacman -T 不认包组名：PKG_GROUPS[input] 里的 fcitx5-im 会被原样打成
+# "缺失"（日志体检那次 5/107 里就有 1 个是它，实际组内 4 个成员早就装好了）。
+# 所以核对前先用 pacman -Sgq 把组展开成成员包名，再一并交给 -T。
+_verify_installed_packages() {
+    local -a all=() to_check=() missing=()
+    local seen=" " group_info key p members m
+
+    for group_info in "${PKG_GROUP_NAMES[@]}"; do
+        IFS=':' read -r key _ <<< "$group_info"
+        for p in ${PKG_GROUPS[$key]}; do
+            [[ "$seen" == *" $p "* ]] && continue
+            seen+="$p "
+            all+=("$p")
+        done
+    done
+
+    for p in "${AUR_PACKAGES[@]}"; do
+        [[ "$seen" == *" $p "* ]] && continue
+        seen+="$p "
+        all+=("$p")
+    done
+
+    # 展开包组；普通包名 pacman -Sgq 返回空，原样保留
+    for p in "${all[@]}"; do
+        members=$(pacman -Sgq "$p" 2>/dev/null) || members=""
+        if [[ -n "$members" ]]; then
+            log "package group expanded for verification: $p"
+            while IFS= read -r m; do
+                [[ -n "$m" ]] && to_check+=("$m")
+            done <<< "$members"
+        else
+            to_check+=("$p")
+        fi
+    done
+
+    # 组成员可能与清单里其它包名重复，去重后再核对
+    mapfile -t to_check < <(printf '%s\n' "${to_check[@]}" | sort -u)
+
+    mapfile -t missing < <(pacman -T "${to_check[@]}" 2>/dev/null | sed '/^[[:space:]]*$/d')
+    MISSING_PACKAGES=("${missing[@]}")
+
+    if [[ ${#missing[@]} -eq 0 ]]; then
+        print_ok "包核对通过：${#to_check[@]} 项全部就绪（清单 ${#all[@]} 条，组已展开）"
+        log "Package verification passed: ${#to_check[@]} items from ${#all[@]} entries"
+        return 0
+    fi
+
+    echo ""
+    print_fail "包核对：${#missing[@]}/${#to_check[@]} 项未安装（清单 ${#all[@]} 条，组已展开为成员）"
+    printf '         %s\n' "${missing[@]}"
+    print_info "补装：paru -S --needed ${missing[*]}"
+    log "MISSING PACKAGES (${#missing[@]}/${#to_check[@]}): ${missing[*]}"
+    write_pending_list || true
+    return 1
+}
+
+# 待补装清单：终端会滚过去、重启后又看不到，所以把没装上的包落盘成 .txt。
+# 文件内容只有一行是命令，其余全是注释 —— 开机后整段复制粘贴即可补装。
+write_pending_list() {
+    local -a pending=()
+    local seen=" " p helper install_cmd
+
+    for p in "${FAILED_PACKAGES[@]}" "${MISSING_PACKAGES[@]}"; do
+        [[ -z "$p" ]] && continue
+        [[ "$seen" == *" $p "* ]] && continue
+        seen+="$p "
+        pending+=("$p")
+    done
+
+    if [[ ${#pending[@]} -eq 0 ]]; then
+        return 1
+    fi
+
+    helper="${AUR_HELPER:-paru}"
+    if [[ "$helper" == "sudo pacman" ]]; then
+        helper="paru"   # 缺的都是 AUR 包，pacman 装不了
+    fi
+    install_cmd="$helper -S --needed"
+    if [[ "$helper" == "paru" ]]; then
+        install_cmd+=" --skipreview"
+    fi
+    install_cmd+=" --noconfirm ${pending[*]}"
+
+    {
+        printf '# ===== Pullautumn 待补装清单 =====\n'
+        printf '# 生成时间: %s\n' "$(date '+%Y-%m-%d %H:%M:%S')"
+        printf '# 本次有 %d 个包没装成功：%s\n' "${#pending[@]}" "${pending[*]}"
+        printf '# 安装日志: %s\n' "${LOG_FILE:-}"
+        printf '#\n'
+        printf '# 说明：GitHub hosts 修复只能解决域名解析与建连，解决不了\n'
+        printf '#       Releases 大文件下载到一半被断开（curl 35 / git clone 超时）。\n'
+        printf '#       等网络稳定后，把下面这一整行复制粘贴到终端执行即可；\n'
+        printf '#       上面全是注释，整段复制也不会多执行任何东西。\n'
+        printf '#\n'
+        printf '%s\n' "$install_cmd"
+        printf '#\n'
+        printf '# --- 关于 GitHub 镜像（gh-mirror）---\n'
+        printf '# 补装时如果又出现 curl: (7) / git clone 超时，是可以临时借道镜像的：\n'
+        printf '#     gh-mirror on      # 开启（写 ~/.makepkg.conf 与 ~/.gitconfig）\n'
+        printf '#     （执行上面的补装命令）\n'
+        printf '#     gh-mirror off     # 用完关掉，否则 git push 会失败（镜像只读不写）\n'
+        printf '# 当前状态随时可查：gh-mirror status\n'
+        printf '#\n'
+        printf '# 补装成功后可删除本文件：rm %s\n' "$PENDING_LIST_FILE"
+    } > "$PENDING_LIST_FILE" || return 1
+
+    print_info "待补装清单已写入：$PENDING_LIST_FILE"
+    log "Pending package list written: $PENDING_LIST_FILE (${#pending[@]} packages)"
+    return 0
 }
 
 install_packages() {
@@ -56,7 +220,8 @@ install_packages() {
     local current=0
     local failed=0
 
-    echo -e "   Installing ${WHITE}$total${NC} package groups..."
+    # 进度按「包组」计，末尾核对按展开后的「包」计，两者不同源，写清楚免得被当成漏装
+    echo -e "   ${WHITE}$total${NC} 个包组 ${DIM}(进度按组计；末尾核对按展开后的包计)${NC}"
     echo ""
 
     for group_info in "${PKG_GROUP_NAMES[@]}"; do
@@ -138,19 +303,32 @@ install_packages() {
         print_skip "AUR packages (no AUR helper available)"
     elif is_done "aur_packages"; then
         print_skip "AUR packages (already done)"
+    elif ! _aur_network_gate; then
+        print_skip "AUR packages (GitHub unreachable, skipped)"
+        log "AUR packages skipped: github unreachable"
     else
         # 逐个装、逐个显示，全程不再询问（已装的直接标 OK）
-        local aur_failed=0
-        _install_each "AUR 包" "${AUR_PACKAGES[@]}" || aur_failed=$?
+        # AUR_PACKAGES 里也混了仓库包（matugen / uv），所以标题不写死"AUR"
+        local aur_failed=0 aur_start=${#FAILED_PACKAGES[@]}
+        _install_each "必装依赖包（AUR / 仓库）" "${AUR_PACKAGES[@]}" || aur_failed=$?
 
         echo ""
         if [[ $aur_failed -eq 0 ]]; then
             mark_done "aur_packages"
-            print_ok "AUR 包全部就绪"
+            print_ok "必装依赖包全部就绪"
         else
-            print_warn "$aur_failed 个 AUR 包未装成功（见日志）"
+            local -a aur_missing=("${FAILED_PACKAGES[@]:$aur_start}")
+            print_warn "$aur_failed 个必装依赖包未装成功："
+            printf '         %s\n' "${aur_missing[@]}"
+            log "AUR FAILED (${aur_failed}): ${aur_missing[*]}"
+            print_info "这些包名也已写进待补装清单，开机后可照着补装"
+            write_pending_list || true
         fi
     fi
+
+    # 全部包装完后统一核对一遍：pacman 装完不等于全部就位，
+    # 而且 AUR 失败在日志里看不到，只有主动查才知道缺了什么
+    _verify_installed_packages || true
 
     log "Packages installed"
 }
@@ -339,4 +517,6 @@ install_optional_packages() {
 
     mark_done "optional_packages"
     log "Optional: ${OPT_REPO[*]:-} ${OPT_AUR[*]:-} ${OPT_FLATPAK[*]:-}"
+    # 可选软件也可能失败，再落一次盘（内容累积，覆盖写不会丢之前的失败包）
+    write_pending_list || true
 }

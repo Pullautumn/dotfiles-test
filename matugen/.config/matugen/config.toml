@@ -39,7 +39,7 @@ post_hook = 'makoctl reload &'
 
 [templates.niri]
 input_path = '~/.config/matugen/templates/niri-colors.kdl'
-output_path = '~/.config/niri/conf.d/colors.kdl'
+output_path = '~/.config/niri/conf.d/colors-generated.kdl'
 
 [templates.obs]
 input_path = '~/.config/matugen/templates/obs-matugen.obt'

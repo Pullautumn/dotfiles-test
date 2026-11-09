@@ -294,14 +294,7 @@ apply_dotfiles() {
         print_info "显示器配置: ~/.config/niri/conf.d/output.kdl ${DIM}(按实际输出名调整)${NC}"
     fi
 
-    # niri 的 screenshot-path 只接受绝对路径，不展开 ~ 和环境变量。装到别的
-    # 用户名下必须手动改，脚本不代改（藏在 kdl 里，自动替换风险大于收益）
-    local env_kdl="$HOME/.config/niri/conf.d/environment.kdl"
-    if [[ -f "$env_kdl" ]] && grep -qF "/home/pullautumn" "$env_kdl" 2>/dev/null; then
-        print_warn "截图路径仍写着作者家目录，需要手动改一处："
-        print_info "  $env_kdl 里的 screenshot-path"
-        print_info "  把 /home/pullautumn 换成 $HOME，再 mkdir -p ~/Pictures/Screenshots"
-    fi
+    # 截图路径用 ~，niri 自己会展开并创建目录，不需要提示用户手改
 
     # 三套状态栏都已部署，用快捷键切换
     if [[ -d "$HOME/.config/waybar-quickshell" ]]; then

@@ -1,5 +1,68 @@
 # shellcheck shell=bash
 
+# ------------------------------------------------------------------------------
+# sudo 保活
+# 整个安装流程远超 sudo 默认的 15 分钟时间戳，中途会反复要密码。这里只在**本次
+# 运行内**缓存凭证：不改 /etc/sudoers、不做免密，脚本退出后行为完全恢复默认。
+# ------------------------------------------------------------------------------
+SUDO_KEEPALIVE_PID=""
+
+stop_sudo_keepalive() {
+    if [[ -n "${SUDO_KEEPALIVE_PID:-}" ]]; then
+        kill "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+        SUDO_KEEPALIVE_PID=""
+    fi
+}
+
+start_sudo_keepalive() {
+    print_info "接下来只需输入一次 sudo 密码（仅本次安装有效）"
+    if ! sudo -v; then
+        print_fail "sudo 验证失败"
+        exit 1
+    fi
+
+    # sudo -n 不交互，失败也不会弹密码，只用来刷新时间戳
+    ( while true; do sudo -n true 2>/dev/null || true; sleep 50; done ) &
+    SUDO_KEEPALIVE_PID=$!
+    print_ok "sudo 凭证已缓存"
+}
+
+# ------------------------------------------------------------------------------
+# pacman 残留锁
+# 强制重启留下的 db.lck 可以直接删；但真有包管理器在跑时删锁会损坏数据库，
+# 所以先确认没有活进程，等 60 秒仍不结束就报错退出，绝不强删。
+# ------------------------------------------------------------------------------
+_pkg_manager_running() {
+    pgrep -x pacman >/dev/null 2>&1 \
+        || pgrep -x paru >/dev/null 2>&1 \
+        || pgrep -x yay >/dev/null 2>&1 \
+        || pgrep -x pamac >/dev/null 2>&1
+}
+
+clear_pacman_lock() {
+    local lock=/var/lib/pacman/db.lck
+    [[ -f "$lock" ]] || return 0
+
+    if _pkg_manager_running; then
+        print_warn "检测到包管理器正在运行，等待其结束（最多 60 秒）"
+        local i
+        for i in $(seq 1 60); do
+            _pkg_manager_running || break
+            sleep 1
+        done
+        if _pkg_manager_running; then
+            print_fail "包管理器仍在运行，不删除锁文件（强删会损坏数据库）"
+            print_info "等它结束后重跑：./install.sh"
+            exit 1
+        fi
+        print_ok "包管理器已结束"
+    fi
+
+    print_warn "清理 pacman 残留锁（上次强制重启遗留）"
+    sudo rm -f "$lock"
+    print_ok "Lock removed"
+}
+
 check_system() {
     section "Pre-Flight" "System Check"
 
@@ -49,6 +112,34 @@ check_system() {
         exit 1
     fi
 
+    # 锁在装任何东西之前处理；凭证也只在这里问一次，后面全程复用
+    clear_pacman_lock
+    start_sudo_keepalive
+
+    # 上一轮若中断（断电 / kill -9 / 强制关窗）会留下镜像配置，
+    # 本轮没打算启用就先清掉，避免「偷偷常驻」到用户察觉不到的地步。
+    if [[ -f "$ROOT_DIR/local-bin/.local/bin/gh-mirror" ]]; then
+        if bash "$ROOT_DIR/local-bin/.local/bin/gh-mirror" stale-check --quiet; then
+            print_warn "检测到上次安装遗留的 GitHub 镜像配置，已自动清除"
+            log "Stale gh-mirror config cleaned"
+        fi
+    fi
+
+    # AUR 包（makepkg 的 curl + *-git 包的 git clone）、Anime4K、yazi 插件
+    # 全都依赖 github.com。在这里一次性修好，后面所有阶段都受益；
+    # 修不好也不中断，交给 Phase 4b 的交互闸门决定是否跳过 AUR。
+    #
+    # 镜像与 hosts 是两种不同的药，不能互相替代：
+    #   · hosts 治 DNS 污染（解析到错 IP，curl 报 (6)）
+    #   · 镜像治链路阻断（能解析但连不上，curl 报 (7)）
+    # 镜像已开着就说明走的是另一条路，hosts 修补没有意义，跳过。
+    if [[ "${PULLAUTUMN_MIRROR:-off}" == "on" ]]; then
+        print_ok "GitHub 镜像加速已启用，跳过 /etc/hosts 修补"
+        log "GitHub mirror active; skip hosts patch"
+    else
+        ensure_github_reachable || true
+    fi
+
     log "System check passed"
 }
 
@@ -60,17 +151,7 @@ install_base() {
         return
     fi
 
-    # Check pacman lock
-    if [[ -f /var/lib/pacman/db.lck ]]; then
-        print_warn "Pacman database is locked"
-        if confirm "Remove lock file?"; then
-            sudo rm -f /var/lib/pacman/db.lck
-            print_ok "Lock removed"
-        else
-            print_fail "Cannot proceed"
-            exit 1
-        fi
-    fi
+    # 锁与 sudo 凭证已在 check_system 处理，这里不再重复询问
 
     exe_live "Updating system" "sudo pacman -Syu --noconfirm"
     exe_live "Installing base tools" "sudo pacman -S --needed --noconfirm git stow base-devel"

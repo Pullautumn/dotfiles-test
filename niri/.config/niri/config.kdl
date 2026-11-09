@@ -22,7 +22,10 @@ include "conf.d/environment.kdl"
 include "conf.d/autostart.kdl"
 include "conf.d/window-rules.kdl"
 include "conf.d/binds.kdl"
-// 这是include进来的颜色文件，主要设置了窗口边框
+// 默认配色：仓库自带，stow 部署后一定存在，保证配置永远能加载
 include "conf.d/colors.kdl"
+// 换壁纸后由 matugen 生成的配色，存在时按位置性覆盖上面的默认值；
+// 文件不存在时只打 warning、不中断加载（optional 需要 niri >= 26.04）
+include optional=true "conf.d/colors-generated.kdl"
 
 

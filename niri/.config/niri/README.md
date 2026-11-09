@@ -17,7 +17,8 @@
 | `conf.d/autostart.kdl` | 自启项：waybar、swaync、fcitx5、cliphist、swayidle、swayosd、polkit 代理、awww、waypaper、门户 |
 | `conf.d/window-rules.kdl` | 窗口规则：默认浮动、按 app-id / 标题特判、默认列宽 |
 | `conf.d/binds.kdl` | 全部快捷键 |
-| `conf.d/colors.kdl` | 窗口边框配色，**由 matugen 生成**，手改会被下次换壁纸覆盖 |
+| `conf.d/colors.kdl` | 窗口边框配色的**默认值**，仓库自带、随 stow 部署，保证任何情况下配置都能加载 |
+| `conf.d/colors-generated.kdl` | 换壁纸后由 matugen 生成，按 include 位置性覆盖默认值；被 gitignore，不进仓库 |
 | `config.kdl.all` | 官方全量配置参考，不参与加载，查语法时看它 |
 | `scripts/` | 截图、录屏、长截图、侧边栏、快捷键弹窗等脚本 |
 
@@ -159,8 +160,9 @@ NiriMod 写 `~/.config/niri/conf.d/layout.kdl` 时路径解析会穿过这条目
 
 两个注意点：
 
-- **别在 GUI 里改颜色**。边框色来自 `conf.d/colors.kdl`，那是 matugen 生成的；NiriMod 保存时会把它
-  一起重新序列化，下次 matugen 又覆盖回来，白折腾。颜色统一走 `Mod+Alt+M` / `Mod+Alt+T`。
+- **别在 GUI 里改颜色**。边框色来自 `conf.d/colors-generated.kdl`（换壁纸时生成）或默认的
+  `conf.d/colors.kdl`；NiriMod 保存时会一起重新序列化，下次 matugen 又覆盖回来，白折腾。
+  颜色统一走 `Mod+Alt+M` / `Mod+Alt+T`。
 - `profiles/` 会在 `~/.config/niri/profiles` 出现，因为配置目录是软链，它实际落在仓库里，已加进
   `.gitignore`。要在多台机器间共享 profile 再自行放开。
 

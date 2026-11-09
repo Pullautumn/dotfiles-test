@@ -150,7 +150,8 @@ install_wayscrollshot() {
     local tar_url="https://github.com/jswysnemc/wayscrollshot/releases/download/v0.1.0/wayscrollshot-linux-x86_64.tar.gz"
     local ok=0
 
-    if curl -fsSL "$tar_url" -o "$tmp_dir/wayscrollshot.tar.gz" 2>/dev/null \
+    # curl --retry 处理传输中途被 reset，外层 gh_retry 再兜 3 次整体重试
+    if gh_retry "curl -fsSL --retry 3 --retry-all-errors --connect-timeout 10 '$tar_url' -o '$tmp_dir/wayscrollshot.tar.gz'" 3 3 \
         && tar -xzf "$tmp_dir/wayscrollshot.tar.gz" -C "$tmp_dir" 2>/dev/null; then
         local extracted
         extracted=$(find "$tmp_dir" -type f -name "wayscrollshot" 2>/dev/null | head -1)
@@ -416,41 +417,11 @@ setup_matugen() {
         return
     fi
 
+    # 首次安装不依赖 matugen，它只在以后换壁纸时用；缺了也不影响这一步
     if ! command_exists matugen; then
-        print_warn "matugen not installed, skipping theme generation"
-        mark_done "setup_matugen"
-        return
+        print_warn "matugen 未安装，换壁纸时的配色生成会不可用（首次部署不依赖它）"
     fi
 
-    local wallpaper_dir="$HOME/Pictures/Wallpapers"
-    local default_wallpaper="$wallpaper_dir/壁纸1.jpg"
-    local selected=""
-
-    # 优先用「上次真正在用的那张」来生成初始配色。
-    # 全仓库统一约定是 ~/.cache/current_wallpaper（**不带点**）：matugen-update.sh
-    # 维护它，quickshell 锁屏组件也读它。改名或换名字时必须三处一起改。
-    local cache_file="$HOME/.cache/current_wallpaper"
-    if [[ -e "$cache_file" ]]; then
-        selected=$(readlink -f "$cache_file" 2>/dev/null || true)
-        [[ -f "$selected" ]] || selected=""
-    fi
-
-    # 其次壁纸目录里的第一张
-    if [[ -z "$selected" && -d "$wallpaper_dir" ]]; then
-        selected=$(find -L "$wallpaper_dir" -maxdepth 1 -type f \
-            \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) \
-            2>/dev/null | sort | head -1)
-    fi
-
-    # 最后退回仓库默认壁纸
-    if [[ -z "$selected" && -f "$default_wallpaper" ]]; then
-        selected="$default_wallpaper"
-    fi
-
-    # 初始明暗基调：全新安装从亮色起步。
-    # matugen-update.sh 读的就是这个文件，它缺失时的默认值也是 light——两处必须一致，
-    # 否则会出现「装完是亮的，第一次开机轮换壁纸又变黑」。
-    # 文件已存在时不覆盖，尊重之前的选择；切换用 Mod+Alt+M（matugen-select-type.sh）。
     local mode_cache="$HOME/.cache/matugen-strategy"
     mkdir -p "$mode_cache"
     local init_mode="light"
@@ -460,16 +431,22 @@ setup_matugen() {
         echo "light" > "$mode_cache/mode"
     fi
 
-    if [[ -n "$selected" ]]; then
-        print_info "生成主题: $(basename "$selected")（$init_mode 模式）"
-        if exe "matugen image '$selected' -m $init_mode"; then
-            print_ok "Theme generated successfully"
+    # 首次部署**不跑 matugen**。
+    # matugen 生成的是「当前那张壁纸」的配色，而全新安装应该先落在仓库自带的
+    # 默认配色上，等用户真正换壁纸时再由 matugen-update.sh 接管。
+    # --configs-only 只做文件还原，不碰 GSettings / fcitx / 图标缓存 ——
+    # 那几段里有 sed -i 直接改 ~/.config 下的文件，等于改写 stow 软链背后的仓库。
+    local restore_script="$HOME/.config/scripts/matugen-restore.sh"
+    if [[ -f "$restore_script" ]]; then
+        print_info "应用仓库自带的默认配色（不生成壁纸配色）"
+        if exe "bash '$restore_script' --configs-only"; then
+            print_ok "Default colors restored"
         else
-            print_warn "Matugen failed, 手动执行: matugen image '$selected' -m $init_mode"
+            print_warn "还原默认配色失败（看 $LOG_FILE）"
+            print_info "可手动重试: bash ~/.config/scripts/matugen-restore.sh --configs-only"
         fi
     else
-        print_warn "找不到壁纸，跳过主题生成"
-        print_info "放一张壁纸到 ~/Pictures/Wallpapers 后执行: matugen image 图片路径 -m $init_mode"
+        print_warn "找不到 matugen-restore.sh，跳过配色还原"
     fi
 
     # 同步 GNOME 的明暗基调。这一步和配色数值无关，纯粹是 dconf 状态：
@@ -491,7 +468,7 @@ setup_matugen() {
     fi
 
     mark_done "setup_matugen"
-    log "Matugen initialized"
+    log "Default colors restored (matugen not run on first install)"
 }
 
 # 桌面环境的一次性系统设置（不属于 dotfiles）
@@ -548,24 +525,59 @@ setup_desktop_tweaks() {
     log "Desktop tweaks applied"
 }
 
+# 蓝牙服务自检：单元 enabled ≠ 单元正在跑。
+#
+# bluez 的 unit 带 `ConditionPathIsDirectory=/sys/class/bluetooth` 且**没有** `Restart=`。
+# 内核模块（btusb 等）还没加载时该目录不存在，systemd 会直接跳过启动，而
+# `systemctl enable --now` 依然返回 0 —— 于是安装器打印「Enabled bluetooth」，
+# 实际没有任何守护进程。之后打开 blueman 就会看到「蓝牙守护进程没有运行」。
+#
+# 这里只负责如实记账，补救提示交给完成页（99-completion.sh）。
+_bluetooth_selfcheck() {
+    BT_SELFCHECK_FAILED=false
+    systemctl list-unit-files 2>/dev/null | grep -q "^bluetooth.service" || return 0
+
+    if systemctl is-active --quiet bluetooth.service; then
+        print_ok "Bluetooth daemon running"
+        return 0
+    fi
+
+    BT_SELFCHECK_FAILED=true
+    print_warn "蓝牙已启用但未运行（内核模块可能晚于服务加载），重启后仍不行就手动重启一次服务"
+    log "bluetooth.service enabled but not active"
+}
+
 enable_services() {
     section "Phase 9" "System Services"
 
     if is_done "enable_services"; then
         print_skip "Services enabled (already done)"
+        _bluetooth_selfcheck
         return
     fi
 
     local services=("NetworkManager" "bluetooth")
 
-    local service
+    local service unit
     for service in "${services[@]}"; do
-        if systemctl list-unit-files 2>/dev/null | grep -q "^$service.service"; then
-            if sudo systemctl enable --now "$service" >> "$LOG_FILE" 2>&1; then
-                print_ok "Enabled $service"
-            else
-                print_warn "Failed to enable $service"
-            fi
+        unit="$service.service"
+        systemctl list-unit-files 2>/dev/null | grep -q "^$unit" || continue
+
+        # 拆成 enable + start 两步，不用 `enable --now`：
+        # ConditionPathIsDirectory 不满足时启动会被 systemd 静默跳过，但 `enable --now`
+        # 仍返回 0，失败会被掩盖成成功（详见 _bluetooth_selfcheck 的注释）。
+        if ! sudo systemctl enable "$unit" >> "$LOG_FILE" 2>&1; then
+            print_warn "Failed to enable $service"
+            continue
+        fi
+        if ! systemctl is-active --quiet "$unit"; then
+            sudo systemctl start "$unit" >> "$LOG_FILE" 2>&1 || true
+        fi
+
+        if systemctl is-active --quiet "$unit"; then
+            print_ok "Enabled $service"
+        else
+            print_warn "Enabled $service（已设为开机自启）"
         fi
     done
 
@@ -579,6 +591,7 @@ enable_services() {
     fi
 
     mark_done "enable_services"
+    _bluetooth_selfcheck
     log "Services enabled"
 }
 
@@ -615,12 +628,20 @@ setup_sddm() {
 
     # ---- 1. 装包 ----
     # 主题只 import QtQuick 2.7 和 SddmComponents 2.0，用不到 QtGraphicalEffects，
-    # 所以依赖很薄。qt5-declarative 是 QML 运行时，qt5-wayland/qt6-wayland 给 greeter 用，
-    # kwin 提供 greeter 的 Wayland 合成器。
+    # 所以依赖很薄。qt5-declarative 是 QML 运行时，qt5-wayland/qt6-wayland 给 greeter 用。
+    #
+    # greeter 的 Wayland 合成器沿用上游 jswysnemc 的 kwin_wayland。
+    # 它是这套配置唯一有实机验证记录的方案；换成 weston --shell=kiosk 虽然少几十个
+    # KDE 依赖，但等于把唯一验证过的环节换掉，出问题时无从对比。
+    # 真不想装 kwin 有两条路（见 drop-in 里的注释）：
+    #   · DisplayServer=x11 + 删掉整个 [Wayland] 段，走 X11 greeter
+    #   · 不装 SDDM，TTY 登录后手动 niri-session（shorin-niri-main 的做法）
     print_info "Installing SDDM and dependencies..."
     local -a sddm_pkgs=(
         sddm
         qt5-declarative qt5-quickcontrols qt5-quickcontrols2
+        # qt5-svg 是 QML Image 加载 .svg 的插件，缺了图标全空白（背景/头像是位图所以正常）
+        qt5-svg
         qt5-wayland qt6-wayland
         kwin
     )
@@ -674,8 +695,10 @@ setup_sddm() {
 DisplayServer=wayland
 
 [Wayland]
-# 上游用的就是 kwin_wayland。要省依赖可改成 weston --shell=kiosk，
-# 或者删掉 [Wayland] 段让 SDDM 退回 X11 greeter。
+# kwin_wayland 是上游 jswysnemc 的默认值，也是这套配置唯一有实机验证记录的 greeter。
+# 三个开关：不接管锁屏、不抢全局快捷键、不覆盖系统语言环境。
+# 不想装 kwin 就把整个 [Wayland] 段删掉，并把上面的 DisplayServer 改成 x11
+# （需要 xorg-server xorg-xauth，装 sddm 时一般已作为依赖带进来）。
 CompositorCommand=kwin_wayland --no-lockscreen --no-global-shortcuts --locale1
 
 [Theme]
@@ -693,6 +716,48 @@ EOF
     print_info "如果开机停在黑屏：Ctrl+Alt+F2 进 TTY，然后"
     print_info "  sudo systemctl disable sddm && sudo systemctl enable --now ly@tty1"
 
+    # ---- 6. 只读自检 ----
+    # 以前写完 drop-in 就 mark_done，日志只留一句 "SDDM configured"；
+    # 主题没拷过去、greeter 二进制不存在这类问题要等重启黑屏才发现。
+    # 这里只检查、不修、不 start：不通过就给 WARN 且不标记完成，重跑会再走一遍。
+    local sddm_check_failed=0 compositor_bin=""
+    compositor_bin=$(grep -E '^CompositorCommand=' "$dropin" 2>/dev/null \
+        | head -1 | cut -d= -f2- | awk '{print $1}') || compositor_bin=""
+
+    if [[ ! -f "$theme_dst/metadata.desktop" ]]; then
+        print_warn "SDDM 自检：主题缺 metadata.desktop（$theme_dst）"
+        sddm_check_failed=1
+    fi
+    if [[ -z "$compositor_bin" ]]; then
+        print_warn "SDDM 自检：drop-in 里没读到 CompositorCommand"
+        sddm_check_failed=1
+    elif ! command -v "$compositor_bin" >/dev/null 2>&1; then
+        print_warn "SDDM 自检：greeter 合成器不存在（$compositor_bin）"
+        sddm_check_failed=1
+    fi
+    if ! pacman -Q qt5-svg >/dev/null 2>&1; then
+        print_warn "SDDM 自检：qt5-svg 未安装（QML 里的 svg 图标会空白）"
+        sddm_check_failed=1
+    fi
+    if ! grep -qF "Current=$theme_name" "$dropin" 2>/dev/null; then
+        print_warn "SDDM 自检：drop-in 里没有 Current=$theme_name"
+        sddm_check_failed=1
+    fi
+    if ! systemctl is-enabled sddm >/dev/null 2>&1; then
+        print_warn "SDDM 自检：sddm 未设为开机自启"
+        sddm_check_failed=1
+    fi
+
+    if (( sddm_check_failed > 0 )); then
+        SDDM_SELFCHECK_FAILED=true
+        print_warn "SDDM 自检未全通过，不标记本阶段完成；修好后重跑安装器即可"
+        log "SDDM self-check FAILED"
+        return 0
+    fi
+
+    SDDM_SELFCHECK_FAILED=false
+    print_ok "SDDM 自检通过（主题 / greeter / qt5-svg / drop-in / 自启）"
+    log "SDDM self-check passed"
     mark_done "setup_sddm"
     log "SDDM configured"
 }

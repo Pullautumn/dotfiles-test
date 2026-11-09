@@ -43,14 +43,18 @@ fcitx5-remote -r        # 重启输入法
 
 ## 前置条件
 
-`default.custom.yaml` 里的 `rime_ice` 方案来自**雾凇拼音**，需要先装：
+`default.custom.yaml` 里的 `rime_ice` 方案来自**雾凇拼音**，对应两个包：
 
-```bash
-paru -S fcitx5-rime
-# 然后把雾凇拼音放进 ~/.local/share/fcitx5/rime/
-```
+| 包 | 提供的内容 |
+|---|---|
+| `fcitx5-rime` | Rime 引擎本身 |
+| `rime-ice-git` | 雾凇拼音方案（`rime_ice` schema + 词库，AUR） |
 
-核心包清单里只有 `fcitx5` / `fcitx5-im` / `fcitx5-chinese-addons`，**不含** `fcitx5-rime` 和雾凇拼音的词库，这两个要自己补。
+两个都在核心包清单的 `input` 组里，一键安装会一起装上。方案文件由 `rime-ice-git` 装到系统共享
+数据目录（`/usr/share/rime-data/`），Rime 直接从那里加载，**不需要**手工往 `~/.local/share/fcitx5/rime/`
+里拷任何东西 —— 这个用户目录只放你自己的补丁和 `*.custom.yaml`。
+
+首次启动会自动编译词库，可能要十几秒；没编完就 `fcitx5-remote -r`，或在托盘菜单里点「重新部署」。
 
 ## 注意
 

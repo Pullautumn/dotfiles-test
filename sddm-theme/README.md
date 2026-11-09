@@ -100,7 +100,9 @@ bash install.sh          # Phase 9b 会问要不要装 SDDM
 sudo cp -r . /usr/share/sddm/themes/lunar-glass
 ```
 
-2. 编辑 SDDM 配置文件 `/etc/sddm.conf`：
+2. 编辑 SDDM 配置。安装脚本写的是 drop-in `/etc/sddm.conf.d/10-lunar-glass.conf`，
+   **不动** `/etc/sddm.conf` 原文件（SDDM 先读 `/etc/sddm.conf`，再按文件名顺序读
+   `conf.d/*.conf`，后者覆盖前者）：
 
 ```ini
 [General]
@@ -117,12 +119,17 @@ Current=lunar-glass
 
 ```bash
 sudo pacman -S --needed sddm qt5-declarative qt5-quickcontrols \
-    qt5-quickcontrols2 qt5-wayland qt6-wayland kwin
+    qt5-quickcontrols2 qt5-svg qt5-wayland qt6-wayland kwin
 ```
 
-> `kwin_wayland` 是上游的做法，效果最稳，但会带进一批 KDE 依赖。
-> 想省空间可以换成 `CompositorCommand=weston --shell=kiosk`（约 5MB），
-> 或者在 `[Wayland]` 段留空让 SDDM 退回 X11 greeter（需要 xorg-server）。
+> `kwin_wayland` 是上游 jswysnemc 的默认值，也是这套配置唯一有实机验证记录的
+> greeter。三个开关分别是：不接管锁屏、不抢全局快捷键、不覆盖系统语言环境。
+>
+> 代价是 kwin 会拖进整套 KDE 依赖（kdecoration、kgamma、
+> plasma-wayland-protocols 等），为了一个登录框确实不划算。不想装有两条路：
+> - 退回 X11 greeter：`DisplayServer=x11` + 删掉整个 `[Wayland]` 段
+>   （需 `xorg-server` `xorg-xauth`，通常已作为 sddm 依赖带进来）
+> - 完全不装 SDDM，TTY 登录后手动 `niri-session`
 
 4. 启用服务（**不要 `systemctl start`**，会当场把当前图形会话踢掉）：
 
@@ -150,7 +157,7 @@ avatar=avatar.jpg          # 登录头像
 type=image                 # image 或 color
 color=#1d1f21              # 纯色背景色
 fontSize=14
-fontFamily="Noto Sans"
+fontFamily=Noto Sans CJK SC
 ```
 
 `background` 和 `avatar` 都写**相对文件名**，解析基准是本主题目录（Qt 拿 QML 文件所在目录当
@@ -206,7 +213,11 @@ sudo cp background.png   /usr/share/sddm/themes/lunar-glass/background.png
 
 - SDDM
 - Qt 5.x
-- Noto Sans CJK SC 字体（可选，用于中文显示）
+- `qt5-svg` —— QML 的 `Image` 加载 `icons/*.svg` 必需，缺了图标全空白
+- `noto-fonts-cjk` —— `fontFamily` 指向 `Noto Sans CJK SC`，缺了会回落默认字体、文字与背景错位
+
+> `fontFamily` **不要加引号**。SDDM 用 QSettings 读 INI，不剥引号，
+> `fontFamily="Noto Sans"` 传进 QML 的是带引号的字面量，`font.family` 匹配不到任何字体。
 
 ## 文件结构
 

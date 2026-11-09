@@ -7,15 +7,30 @@
 CUSTOM_DIR="$HOME/.config/matugen/custom"
 
 RESTORE_LIST=(
-    "btop/catppuccin_mocha.theme"
+    "btop/themes/catppuccin_mocha.theme"
     "fastfetch/config.jsonc"
     "fuzzel/colors.ini"
-    "kitty/current-theme.conf"
-    "niri/conf.d/colors.kdl"
-    "obs-studio/matugen.obt"
     "swayosd/colors.css"
+    "waybar-niri-Win11Like/colors.css"
+    "wlogout/colors.css"
     "yazi/theme.toml"
 )
+
+# --configs-only：安装器首次部署时用。
+# 只把上面这些文件还原成默认配色，跳过图标清理 / GSettings / fcitx / 服务刷新 ——
+# 那几段里有 sed -i 直接改 ~/.config 下的文件，而 stow 已经把目录折叠成软链，
+# 改它等于改写仓库；安装阶段也没有桌面会话可刷新。
+CONFIGS_ONLY=false
+for arg in "$@"; do
+    case "$arg" in
+        --configs-only) CONFIGS_ONLY=true ;;
+        -h|--help)
+            echo "用法: matugen-restore.sh [--configs-only]"
+            echo "  --configs-only  只还原配色文件，跳过图标清理、GSettings、fcitx 与服务刷新"
+            exit 0
+            ;;
+    esac
+done
 
 # custom/Code/User/settings.json 是作者本机 VS Code 设置的备份，里面写死了
 # 作者的家目录和 Python 解释器路径。还原到别人机器上等于拿作者的设置盖掉他自己的，
@@ -35,7 +50,9 @@ function notify() {
     fi
 }
 
-notify "正在启动深度还原程序..." "Starting deep restoration..."
+if [ "$CONFIGS_ONLY" = false ]; then
+    notify "正在启动深度还原程序..." "Starting deep restoration..."
+fi
 
 # ------------------------------------------------------------------------------
 # [一] 还原物理配置文件
@@ -53,6 +70,29 @@ for rel_path in "${RESTORE_LIST[@]}"; do
     cp "$src_file" "$dest"
     echo "  - Restored: $dest"
 done
+
+# kitty 的配色有两个落点，只有这个才是「当前生效」的：
+#   · ~/.config/kitty/colors.conf        —— 仓库跟踪的手写默认配色，被 kitty.conf 直接 include（底层）
+#   · ~/.config/kitty/current-theme.conf —— matugen 换壁纸时由 `kitty +kitten themes` 重写，
+#     被 kitty.conf 里 BEGIN_KITTY_THEME 标记块 include，排在 colors.conf 之后，同名选项由它覆盖
+#
+# 所以这里只生成 current-theme.conf。colors.conf 归 stow 管，不参与还原
+# （以前 RESTORE_LIST 里那条 "kitty/colors.conf" 是 cp 到它自己身上，还会写穿软链改到仓库）。
+if [ -f "$CUSTOM_DIR/kitty/colors.conf" ]; then
+    mkdir -p "$HOME/.config/kitty"
+    cp "$CUSTOM_DIR/kitty/colors.conf" "$HOME/.config/kitty/current-theme.conf"
+    echo "  - Restored: $HOME/.config/kitty/current-theme.conf"
+fi
+
+# niri 的生成配色不在 RESTORE_LIST 里：直接删掉，config.kdl 就会回落到
+# 仓库自带的 conf.d/colors.kdl 默认配色
+rm -f "$HOME/.config/niri/conf.d/colors-generated.kdl"
+echo "  - Reset: ~/.config/niri/conf.d/colors-generated.kdl"
+
+if [ "$CONFIGS_ONLY" = true ]; then
+    echo "Done (--configs-only): 配色已还原为默认值"
+    exit 0
+fi
 
 # ------------------------------------------------------------------------------
 # [二] 深度清理图标主题 (解决 Rofi/GTK 顽固样式问题)

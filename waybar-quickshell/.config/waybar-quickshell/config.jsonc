@@ -134,8 +134,8 @@
     },
     "custom/app-browser": {
         "format": "",
-        "tooltip-format": "浏览器(google-chrome 浏览器)",
-        "on-click": "google-chrome"
+        "tooltip-format": "浏览器(google-chrome-stable 浏览器)",
+        "on-click": "google-chrome-stable"
     },
     "custom/app-term": {
         "format": "",
@@ -248,7 +248,7 @@
             "(.*) - Mozilla Firefox": "Firefox  ",
             "(.*) - Visual Studio Code": "VSCode 󰨞 ",
             "(.*) - Terminal": ">_ Term ",
-            "(.*) - Nautilus": "Files  "
+            "(.*) - Dolphin": "Files  "
         },
         // 左键：切换 浮动/平铺 模式
         "on-click": "niri msg action toggle-window-floating",
@@ -499,7 +499,7 @@
         "return-type": "json",
         "exec": "~/.config/waybar-quickshell/scripts/proxies-control.sh status",
         "on-click": "~/.config/waybar-quickshell/scripts/proxies-control.sh toggle-mode",
-        "on-click-right": "google-chrome --app=\"http://127.0.0.1:9090/ui/#/proxies\"",
+        "on-click-right": "google-chrome-stable --app=\"http://127.0.0.1:9090/ui/#/proxies\"",
         "interval": 5,
         "signal": 8
     },

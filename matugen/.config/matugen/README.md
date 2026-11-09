@@ -31,7 +31,7 @@ Material You 配色生成器。从当前壁纸提取主色，按模板渲染出�
 |---|---|
 | waybar | `~/.config/waybar/colors.css` |
 | waybar（备选样式） | `~/.config/waybar-niri-Win11Like/colors.css` |
-| niri | `~/.config/niri/conf.d/colors.kdl` |
+| niri | `~/.config/niri/conf.d/colors-generated.kdl`（同目录 `colors.kdl` 是仓库自带的默认值，由 config.kdl 先 include） |
 | kitty | `~/.config/kitty/themes/matugen.conf` |
 | fuzzel | `~/.config/fuzzel/colors.ini` |
 | mako | `~/.config/mako/colors.conf` |
@@ -77,7 +77,8 @@ waypaper（选壁纸）
 
 ## 注意
 
-- **别手改 `colors.css` / `colors.kdl` / `theme.toml` 这些生成物**，下次换壁纸就没了。要改就改 `templates/` 里对应的模板。
+- **别手改 `colors.css` / `colors-generated.kdl` / `theme.toml` 这些生成物**，下次换壁纸就没了。要改就改 `templates/` 里对应的模板。
+  `niri/conf.d/colors.kdl` 是例外：它是仓库自带的默认配色（随 stow 部署），可以手改，但 NiriMod 保存时也会重写它。
 - `templates/` 里很多模板用了 Nerd Font 私有区字符，字体缺失时会渲染成方块。
-- 首次使用至少跑一次 `matugen image 某张图`，否则 waybar、fuzzel 这些引用 `colors.*` 的配置找不到文件，会退回默认配色（不报错，只是不好看）。
+- 首次安装**不跑** matugen，改用 `matugen-restore.sh --configs-only` 落地仓库自带的默认配色。只有 `waybar-quickshell` 的 `colors.css` 没有默认版本（只能由 matugen 生成），首次进桌面时它缺失、状态栏回落默认色——换一次壁纸就补上。
 - **别删 `custom/`**：它是 `~/.config/scripts/matugen-restore.sh` 的还原源（`CUSTOM_DIR`）。删了以后还原脚本第一步没有可拷的文件，只剩清图标缓存那几步。
