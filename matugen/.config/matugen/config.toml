@@ -50,10 +50,13 @@ input_path = '~/.config/matugen/templates/pywalfox-colors.json'
 output_path = '~/.cache/wal/colors.json'
 post_hook = 'pywalfox update &'
 
-#[templates.swaync]
-#input_path = '~/.config/matugen/templates/swaync-colors.css'
-#output_path = '~/.config/swaync/colors.css'
-#post_hook = 'swaync-client -rs &'
+# swaync 与 swayosd 复用同一个模板：两者都是 GTK4 应用，只需要一套
+# `@define-color` 变量。原先单独的 swaync-colors.css 用的是 Web 的
+# `:root { --name: value }`，GTK CSS 不认，等于从没生效过（已删）。
+[templates.swaync]
+input_path = '~/.config/matugen/templates/colors.css'
+output_path = '~/.config/swaync/colors.css'
+post_hook = 'swaync-client -rs >/dev/null 2>&1 &'
 
 [templates.swayosd]
 input_path = '~/.config/matugen/templates/colors.css'

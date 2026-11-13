@@ -55,12 +55,21 @@ niri/.config/niri/scripts/venv
 obs-studio/.config/obs-studio/matugen.obt
 obs-studio/.config/obs-studio/themes/
 Thunar/.config/Thunar/accels.scm
-wallpaper/Pictures/Wallpapers/api-random-download/
-wallpaper/Pictures/Wallpapers/cache-niri-auto-blur-bg
-wallpaper/Pictures/Wallpapers/cache-niri-overview-blur-dark
-wallpaper/Pictures/Wallpapers/wallpapers
+# ------------------------------ 壁纸 -----------------------------------------
+# wallpaper/ 不是 stow 包：`_dotfiles_link_wallpapers` 把仓库里的
+# wallpaper/Pictures/Wallpapers 链接到 ~/Pictures/Wallpapers。
+#
+# 图片本身**不进 git**（9 张 35 MB）。理由：git 只能整仓下载，图提交进去后
+# 每个 clone 的人都要付这 35 MB，没法「只给作者」。所以除了目录说明文件，
+# 这个目录下的东西全部忽略；安装器也只对 $LEGACY_USER（默认 pullautumn）才链接，
+# 别人的机器上会把这个目录清空、只建一个空的 ~/Pictures/Wallpapers。
+# 注意：已经提交过的图要 `git rm --cached` 才会真正退出仓库，光加 ignore 无效。
+/wallpaper/Pictures/Wallpapers/*
+!/wallpaper/Pictures/Wallpapers/README.md
 waybar-niri-Win11Like/.config/waybar-niri-Win11Like/colors.css
 waybar-quickshell/.config/waybar-quickshell/colors.css
+# swaync 的配色变量由 matugen 写（兜底源在 matugen/custom/swaync/colors.css）
+swaync/.config/swaync/colors.css
 quickshell/.config/quickshell/Commons/Theme.js
 # 组件目录里由 qs-popup / 安装器自动生成的副本：
 # QML 的 JS 脚本导入不能用 ../，每个组件目录都要有自己的一份 ./Theme.js

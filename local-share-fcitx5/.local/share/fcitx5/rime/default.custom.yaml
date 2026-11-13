@@ -1,6 +1,21 @@
 patch:
-  ascii_composer:
-    good_old_caps_lock: true
+  # 必须用逐键扁平写法（"a/b/c": v），不要写成 ascii_composer: {switch_key: {...}}。
+  # 嵌套写法会把整个 switch_key map 替换掉，librime 默认的 Caps_Lock: clear /
+  # Control_L/R: noop / Eisu_toggle: clear 会一起消失。后果是 caps_lock_switch_style_
+  # 退化成 noop、ProcessCapsLock() 根本不被调用 —— 按 CapsLock 只切系统大小写，
+  # 而 fcitx5-rime 仍会因为 XKB caps 变化弹输入法提示，看着像切换了、实际没切。
+  "ascii_composer/good_old_caps_lock": true
+  # Shift 让给 fcitx5 的 TriggerKeys / AltTriggerKeys，Rime 内部不再用 Shift 切中英。
+  # librime 默认是 Shift_L: inline_ascii / Shift_R: commit_text，不覆盖的话
+  # Shift 会被 ascii_composer(MODIFIER_ONLY) 先截走，fcitx5 那边就切不动，
+  # 表现为「按 Shift 只是临时英文」。这是 fcitx5 热键看着「不生效」的真正原因。
+  "ascii_composer/switch_key/Shift_L": noop
+  "ascii_composer/switch_key/Shift_R": noop
+  # CapsLock 交给 Rime 切 ASCII 模式（clear = 切换前清掉未上屏的输入）。
+  # 与 good_old_caps_lock: true 合用时是「两件事同时发生」：Rime 进 ASCII 模式，
+  # 同时事件继续传给系统、大小写锁定也打开 —— 所以切到英文后打出来是全大写。
+  # 只想让 CapsLock 当中英切换键、不动大小写，把上面那行改成 false。
+  "ascii_composer/switch_key/Caps_Lock": clear
   schema_list:
     - schema: rime_ice
   "menu/page_size": 9 # 修改选词快捷键

@@ -123,10 +123,10 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 1 | `install_base` | `pacman -Syu`，装 `git` `stow` `base-devel` |
 | Phase 2 | `install_aur_helper` | 加 archlinuxcn 源，装 `paru`（已有 paru/yay 则直接复用） |
 | Phase 3 | `clone_dotfiles` | 本地运行时直接用当前目录，否则克隆到 `~/.dotfiles` |
-| Phase 4 | `install_packages` | 按 21 个包组安装 100 个包 |
-| Phase 4b | 同上 | 装 12 个必需 AUR 包（逐包显示进度，不询问） |
+| Phase 4 | `install_packages` | 按 21 个包组安装 102 个包 |
+| Phase 4b | 同上 | 装 13 个必需 AUR 包（逐包显示进度，不询问） |
 | Phase 4c | `install_optional_packages` | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装 |
-| Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接 → 脚本权限 → 生成 GTK 书签 → flatpak 主题放行 |
+| Phase 5 | `apply_dotfiles` | 备份旧配置 → 逐包 stow → 壁纸链接（仅作者） → 脚本权限 → 生成 GTK 书签 → flatpak 主题放行 |
 | Phase 6a | `setup_nvim` | 装 Neovim，`Lazy! sync` 拉齐插件，可选装 LSP 依赖 |
 | Phase 6b | `setup_zsh` | 装 Zsh，可选 `chsh` 改默认 shell |
 | Phase 6c | `setup_mpv` | 装 MPV，可选下载 Anime4K 着色器 |
@@ -137,7 +137,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Pullautumn/dotfiles/main
 | Phase 7d | `setup_qs_lock_pam` | 创建 `/etc/pam.d/qs-lock`（缺 howdy 时会询问是否安装，有 howdy 再加 `qs-lock-face` 并自动探测 PAM 模块），否则锁屏无法验证密码 |
 | Phase 7e | `setup_quickshell` | 兜底 `Theme.js`、`uv sync` 装 Quickshell 依赖、注册（不启用）`qs-notifications.service` |
 | Phase 8 | `setup_matugen` | 应用仓库自带的默认配色（首次不跑 matugen，换壁纸后才生成） |
-| Phase 8b | `setup_desktop_tweaks` | 默认终端、窗口按钮、i2c 权限等桌面细节 |
+| Phase 8b | `setup_desktop_tweaks` | 默认终端设为 kitty（含 Nautilus 右键终端）、窗口按钮、i2c 权限等桌面细节 |
 | Phase 9 | `enable_services` | 启用 NetworkManager、蓝牙、swayosd |
 | Phase 9b | `setup_sddm` | 装 SDDM + lunar-glass 主题，写 `/etc/sddm.conf.d/10-lunar-glass.conf`，`enable` 但不 `start`（可跳过） |
 | Phase 10 | `setup_user_dirs` | 建 `~/Pictures/Wallpapers` 等用户目录 |
@@ -253,10 +253,10 @@ paru -S --needed \
     xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
     waybar fuzzel rofi swaync libnotify \
     wlogout grim slurp wayfreeze wf-recorder imv ffmpeg \
-    cliphist wl-clipboard xclip kitty starship \
+    cliphist wl-clipboard xclip kitty starship xdg-terminal-exec \
     zsh atuin zoxide fzf thefuck fnm \
     thunar thunar-volman thunar-archive-plugin tumbler nautilus gvfs gvfs-mtp gvfs-smb \
-    ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring \
+    ffmpegthumbnailer poppler-glib file-roller webp-pixbuf-loader gnome-keyring nautilus-python \
     fcitx5 fcitx5-im fcitx5-chinese-addons fcitx5-rime \
     pipewire wireplumber pipewire-pulse pipewire-alsa pavucontrol playerctl \
     networkmanager network-manager-applet nm-connection-editor bluez bluez-utils blueman \
@@ -267,14 +267,14 @@ paru -S --needed \
     python python-pip nodejs npm mpv yazi cava brightnessctl wlsunset \
     adw-gtk-theme google-chrome firefox
 
-# 必需附加包（14 个，交给 paru：AUR 包 + 已在官方仓库的 matugen/quickshell）
+# 必需附加包（15 个，交给 paru：AUR 包 + 已在官方仓库的 matugen/quickshell）
 paru -S --needed \
     matugen waypaper-git python-pywalfox \
     ttf-jetbrains-maple-mono-nf-xx-xx ttf-lxgw-wenkai-screen \
     niri-sidebar-git wl-screenrec-git \
     quickshell uv zsh-patina \
     rime-ice-git cliphist-tui-git \
-    mark-shot wayscrollshot-bin
+    mark-shot wayscrollshot-bin nautilus-open-any-terminal
 ```
 
 **④ 部署配置**
@@ -324,7 +324,10 @@ systemctl --user daemon-reload
 只剩一处例外：
 
 1. **GTK 书签** `~/.config/gtk-3.0/bookmarks` —— GTK 只认绝对 `file://` URI，不支持 `~`。
-   仓库里不再放这个文件，安装器会按当前 `$HOME` 现生成；手动装不生成也行，GTK 会自己写一份默认的。
+   仓库里不再放这个文件，安装器会按当前 `$HOME` 现生成。注意它不只是「文件对话框的书签」：
+   **Nautilus 侧边栏里固定哪些目录完全由它决定**（实测 51.1 不会自动列出 `~/Downloads`
+   等标准目录），所以手动装的话建议照 `_dotfiles_generate_bookmarks` 的清单自己写一份，
+   否则左侧只有一个 Home。
 
 niri 的 `screenshot-path` 写 `~/Pictures/Screenshots/...` 就行：niri 会把开头的 `~` 展开成家目录，
 并在最后一级目录不存在时自动创建，不需要安装器代改，也不用自己 `mkdir`。
@@ -350,7 +353,7 @@ sudo systemctl enable sddm           # 用 SDDM 作为登录入口（lunar-glass
 
 ### 必需软件
 
-**包清单（100 个，21 组，按组安装失败不影响其他组）**
+**包清单（102 个，21 组，按组安装失败不影响其他组）**
 
 | 组 | 包 |
 |---|---|
@@ -363,9 +366,9 @@ sudo systemctl enable sddm           # 用 SDDM 作为登录入口（lunar-glass
 | 电源菜单 | `wlogout` |
 | 截图录屏 | `grim` `slurp` `wayfreeze` `wf-recorder` `imv` `ffmpeg` |
 | 剪贴板 | `cliphist` `wl-clipboard` `xclip` `cliphist-tui-git` |
-| 终端 | `kitty` `starship` |
+| 终端 | `kitty` `starship` `xdg-terminal-exec` |
 | Shell | `zsh` `atuin` `zoxide` `fzf` `thefuck` `fnm` |
-| 文件管理 | `thunar` `thunar-volman` `thunar-archive-plugin` `tumbler` `nautilus` `gnome-text-editor` `gvfs` `gvfs-mtp` `gvfs-smb` `ffmpegthumbnailer` `poppler-glib` `file-roller` `webp-pixbuf-loader` `gnome-keyring` |
+| 文件管理 | `thunar` `thunar-volman` `thunar-archive-plugin` `tumbler` `nautilus` `nautilus-python` `gnome-text-editor` `gvfs` `gvfs-mtp` `gvfs-smb` `ffmpegthumbnailer` `poppler-glib` `file-roller` `webp-pixbuf-loader` `gnome-keyring` |
 | 输入法 | `fcitx5` `fcitx5-im` `fcitx5-chinese-addons` `fcitx5-rime` `rime-ice-git` |
 | 音频 | `pipewire` `wireplumber` `pipewire-pulse` `pipewire-alsa` `pavucontrol` `playerctl` |
 | 网络与蓝牙 | `networkmanager` `network-manager-applet` `nm-connection-editor` `bluez` `bluez-utils` `blueman` |
@@ -377,7 +380,7 @@ sudo systemctl enable sddm           # 用 SDDM 作为登录入口（lunar-glass
 | 浏览器 | `google-chrome` `firefox` |
 | GTK 主题 | `adw-gtk-theme`（提供 `adw-gtk3` / `adw-gtk3-dark`，明暗切换用） |
 
-**附加包（12 个，配置直接依赖）**
+**附加包（13 个，配置直接依赖）**
 
 | 包 | 用途 |
 |---|---|
@@ -393,6 +396,7 @@ sudo systemctl enable sddm           # 用 SDDM 作为登录入口（lunar-glass
 | `zsh-patina` | zsh 语法高亮 |
 | `mark-shot` | 选区截图标注（`Alt+Ctrl+S`） |
 | `wayscrollshot-bin` | 滚动长截图（状态栏中键） |
+| `nautilus-open-any-terminal` | Nautilus 右键「打开终端」，终端由 gsettings 指定为 kitty（依赖 repo 的 `nautilus-python`） |
 
 **几个"看着像可选、其实不能删"的依赖**
 
@@ -427,9 +431,10 @@ zsh/.config/zsh/...              →  ~/.config/zsh/...
 zshenv/.zshenv                   →  ~/.zshenv
 local-bin/.local/bin/...         →  ~/.local/bin/...
 scripts/.config/scripts/...      →  ~/.config/scripts/...
+uv/.config/uv/uv.toml            →  ~/.config/uv/uv.toml（条件包，仅作者机器链接）
 
 setup/                           安装器本体（不是 stow 包）
-wallpaper/Pictures/Wallpapers/   壁纸，安装时链接到 ~/Pictures/Wallpapers
+wallpaper/Pictures/Wallpapers/   壁纸，作者机器上链接到 ~/Pictures/Wallpapers（图片不进 git）
 wallpapers/                      头像等杂项资源，不部署
 mainfest.txt                     包名与目标路径的对照表，供 to_stow.sh 使用
 ```
@@ -481,7 +486,7 @@ waybar:~/.config/waybar
 仍不通就回滚到原始 hosts，不留半坏状态。
 
 修不好时 Phase 4b 会停下来问你「继续 / 跳过 AUR / 退出」，不再像以前那样逐个
-超时 21 秒后静默失败。装完还会用 `pacman -T` 复核全部 100 个包 + 12 个 AUR 包，
+超时 21 秒后静默失败。装完还会用 `pacman -T` 复核全部 102 个包 + 13 个 AUR 包，
 缺的会打成 `MISSING PACKAGES` 写进日志：
 
 ```bash
@@ -552,6 +557,28 @@ ls -l ~/Pictures/Wallpapers
 # 断了就重建
 ln -sfn ~/dotfiles/wallpaper/Pictures/Wallpapers ~/Pictures/Wallpapers
 ```
+
+**Nautilus 右键没有「打开终端」，或者打开的不是 kitty**
+
+Nautilus 43 之后原生那个菜单项不可配置，走的是 AUR 的 `nautilus-open-any-terminal`
+（依赖官方仓库的 `nautilus-python`），终端名由它自己的 gsettings 键决定：
+
+```bash
+pacman -Q nautilus-python nautilus-open-any-terminal
+gsettings get com.github.stunkymonkey.nautilus-open-any-terminal terminal   # 期望 'kitty'
+```
+
+不是 `kitty` 就重设，并重启 Nautilus（扩展只在启动时加载）：
+
+```bash
+gsettings set com.github.stunkymonkey.nautilus-open-any-terminal terminal kitty
+nautilus -q
+```
+
+报 `No such schema` 说明包装完没刷新 schema 缓存：`sudo glib-compile-schemas /usr/share/glib-2.0/schemas`。
+装好但值还是 `'gnome-terminal'`（默认值，而 gnome-terminal 并没装 → 点了没反应），说明安装时这一步
+被 schema 缓存时序坑过；现在重跑安装器会自动补编译 + 重设 + 读回校验，或照上面两行手动修。
+Thunar 不依赖这套，它的右键项在 `Thunar/.config/Thunar/uca.xml`（`kitty --directory %f`）。
 
 **重启后没有图形登录界面**
 

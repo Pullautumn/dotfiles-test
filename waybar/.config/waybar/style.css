@@ -547,6 +547,26 @@ tooltip label {
     padding-left: 4px;
 }
 
+/* 保持唤醒中（idle-toggle.sh 返回 class=paused 时）：暖橘色，和💤的黑底区分开。
+   这里必须有 .paused 后缀的更高优先级，否则被下面的 :hover 通用规则盖掉。 */
+#custom-swayidle-toggle.paused {
+    background-color: #fab387;
+    /* 橘色 = 正在阻止自动锁屏 */
+    color: #1e1e2e;
+}
+
+#custom-swayidle-toggle.active {
+    background-color: #11111b;
+    /* 允许休眠：维持深色，不抢视线 */
+    color: #cdd6f4;
+}
+
+/* hover 通用规则在后面，会盖掉上面的橘色，这里补回来（略浅一档） */
+#custom-swayidle-toggle.paused:hover {
+    background-color: #f9c096;
+    color: #1e1e2e;
+}
+
 /* ===== 通知模块样式 ===== */
 #custom-clipboard {
     background-color: #11111b;

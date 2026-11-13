@@ -16,10 +16,16 @@ fcitx5 的**用户级数据**，目前只有一份 Rime 定制补丁。
 patch:
   ascii_composer:
     good_old_caps_lock: true      # Caps Lock 仍是大小写切换，不切成英文输入
+    switch_key:                   # 把 Shift 让给 fcitx5 的 TriggerKeys
+      Shift_L: noop               # 不设这两行，左 Shift 切中英会被 Rime 先截走
+      Shift_R: noop
   schema_list:
     - schema: rime_ice            # 只用雾凇拼音
   "menu/page_size": 9             # 每页 9 个候选
 ```
+
+`switch_key` 只写了两个 Shift，没列出的 `Control_L` / `Control_R` / `Caps_Lock` 保持 librime
+内置默认（`noop` / `noop` / `clear`），不受影响。
 
 选词与翻页键位：
 
@@ -33,13 +39,18 @@ patch:
 
 ## 生效
 
-Rime 的补丁文件改完必须重新部署：
+Rime 的补丁文件改完必须重新部署。`fcitx5-remote -r` **不够**：它只重载 fcitx5 自己的配置，
+不会让 Rime 重新编译（实测删掉编译产物后它也没有重建）。要删掉编译产物再重启进程：
 
 ```bash
-fcitx5-remote -r        # 重启输入法
+rm -f ~/.local/share/fcitx5/rime/build/default.yaml
+pkill -x fcitx5; fcitx5 -d
 ```
 
-或者在托盘图标右键 →「重新部署」。只重启 fcitx5 不重新部署的话，补丁不会生效。
+也可以不做上面这步，直接在托盘图标右键 →「重新部署」。
+
+验证是否编进去了：重编后 `~/.local/share/fcitx5/rime/build/default.yaml` 的 `ascii_composer:`
+段里应该能看到 `switch_key: {Shift_L: noop, Shift_R: noop}`。
 
 ## 前置条件
 

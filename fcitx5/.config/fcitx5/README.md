@@ -2,10 +2,13 @@
 
 中文输入法。默认方案是 **Rime（雾凇拼音 rime_ice）**，另外保留了英文键盘与拼音（备用）。
 
-**切换键：左 Shift。** 本仓库作者没有沿用上游的 `Ctrl+Space`，而是在
-`fcitx5-configtool` 的「全局选项 → 切换输入法」里改成了单独按左 Shift，中英文一键切换。
-这个改动**没法靠预置配置文件完成**——手改 `config` 即使重启 fcitx5 也不生效（见下方「注意」），
-所以装完之后需要自己用 configtool 设一次。
+**切换键：左 Shift。** 没有沿用上游的 `Ctrl+Space`，改成单独按左 Shift 一键切中英。
+写在 `config` 的 `[Hotkey/TriggerKeys] 0=Shift_L` 里，落盘即生效，装完不需要再手点 configtool。
+
+但**光改这一处不够**：Rime 的 `ascii_composer` 默认也把 Shift 用作切换键
+（`Shift_L: inline_ascii` / `Shift_R: commit_text`），会在 fcitx5 判定「单按」之前先把键吃走，
+表现成「按 Shift 只是临时英文」而不是切输入法。所以 `local-share-fcitx5` 那份
+`rime/default.custom.yaml` 里必须同时把两个 Shift 设成 `noop`。两边都改才算配置完整。
 
 部署到 `~/.config/fcitx5`。皮肤与词库在 `local-share-fcitx5` 包里（`~/.local/share/fcitx5`）。
 
@@ -28,8 +31,10 @@
 | 项 | 值 | 含义 |
 |---|---|---|
 | `DefaultIM` | `rime` | 默认输入法 |
-| `TriggerKeys` | `Shift_L` | 切换输入法（中英互切），上游默认 `Control+space` |
-| `AltTriggerKeys` | `Shift+Shift_R` | 备用切换键，保持上游默认，本仓库不使用 |
+| `TriggerKeys` | `Shift_L` | 单按左 Shift 切中英（主触发键），上游默认 `Control+space` |
+| `AltTriggerKeys` | `Shift_R` | 单按右 Shift 切中英（备用）。原写法 `Shift+Shift_R` 里的 `Shift+` 是冗余的，fcitx5 会 normalize 掉 |
+| `ModifierOnlyKeyTimeout` | `250` | 单按修饰键的判定窗口（毫秒）；按下后 250ms 内没接别的键才算「单按」 |
+| `EnumerateGroupForwardKeys` | `Control+space` | 切输入法组。原来是 `Super+space`，但被 niri 的 `Mod+Space`（窗口浮动）先吃掉，fcitx5 收不到；本仓库只有一组，实际不会触发 |
 | `Vertical Candidate List` | `False` | 候选词横向排列 |
 | `WheelForPaging` | `True` | 滚轮翻页 |
 | `Font` | `Sans Serif 12` | 候选词字体 |
@@ -49,6 +54,8 @@
 - 数字键 `1-9` 直接选词
 - `←/→` 选词，`↑/↓` 翻页，`Tab` 下移一条
 - `,` / `.` 翻页
+- **`ascii_composer/switch_key` 的 `Shift_L` / `Shift_R` 都设成 `noop`** —— 把 Shift 让给
+  fcitx5 的 `TriggerKeys` / `AltTriggerKeys`。不设这两行，上面那个左 Shift 切中英就是废的。
 
 改完要重新部署 Rime：
 
@@ -88,17 +95,33 @@ fcitx5-remote -r       # 重启
 
 ## 注意
 
-- **左 Shift 切中英文是 fcitx5 的全局热键**，在 `fcitx5-configtool` 的「全局选项 → 切换输入法」
-  里设置，落盘为 `[Hotkey/TriggerKeys]` 的 `0=Shift_L`。上游默认是 `Control+space`。
-  （另有 `[Hotkey/AltTriggerKeys]` = 「备用切换输入法」，上游默认 `Shift+Shift_R`，本仓库不动它。）
-- **热键不能靠手改 `config` 生效。** 实测：把 `0=Shift+Shift_R` 手动改成 `0=Shift_L`，
-  再 `fcitx5-remote -e` 优雅退出、确认 `pgrep fcitx5` 为空后 `fcitx5 -d` 重启，依然无效；
-  只有走 configtool 改才立刻生效。原因未深究（疑似热键表在启动时被另一份运行时状态覆盖）。
-  **所以新机装完后必须手动设一次，这一步没法脚本化。**
+- **左 Shift 是主触发键，右 Shift 只是备用。** 两者在 fcitx5 里走不同的判定：
+  `TriggerKeys`（左 Shift）任何时候都能切；`AltTriggerKeys`（右 Shift）多一层
+  `canAltTrigger()`——输入法已经关闭、且上一次不是它自己关的，直接返回 false，按了没反应。
+  所以主用左手。判定窗口由 `ModifierOnlyKeyTimeout=250` 控制：`Shift+A` 这类组合不会误触发，
+  但「先按住 Shift 停顿超过 250ms 再按字母」会切过去。
+- **改完怎么生效。** 手改 `config` 是有效的，不需要 configtool：重启 fcitx5 进程
+  （`pkill -x fcitx5 && fcitx5 -d`）后，用 D-Bus 读回来确认过 `TriggerKeys[0]=Shift_L`：
+  ```bash
+  gdbus call --session --dest org.fcitx.Fcitx5 --object-path /controller \
+      --method org.fcitx.Fcitx.Controller1.GetConfig "fcitx://config/global"
+  ```
+  `fcitx5-remote -r` 只重载 fcitx5 自己的配置，**不会触发 Rime 重新部署**。改了
+  `default.custom.yaml` 要先删掉编译产物再重启：
+  ```bash
+  rm -f ~/.local/share/fcitx5/rime/build/default.yaml
+  pkill -x fcitx5; fcitx5 -d
+  ```
+  重编后 `build/default.yaml` 的 `ascii_composer:` 里应出现 `switch_key: {Shift_L: noop, Shift_R: noop}`。
+  （早前版本的本 README 写过「手改无效、必须走 configtool」，那是误判：当时没改 Rime 的
+  `switch_key`，Shift 被 `ascii_composer` 截走，看起来才像热键没生效。）
+- **切过去之后当前输入法会停在 `keyboard-us`。** 停用态（`keyboard-us`）下再按 Shift 会回到
+  `rime`，两者对应 `~/.config/fcitx5/profile` 里的前两项。排查时注意 `fcitx5-remote`
+  的返回值是 **`1` = 未激活、`2` = 激活**（不是反过来），别拿它当「中/英」。
 - 本目录经 stow 软链到 `~/.config/fcitx5`，**configtool 保存时会把整份运行时配置写回这个文件**
   （等于直接改仓库）。改完记得核对 `[Hotkey/*]` 各段，别把别的键一起带脏。
 - `pinyin` 是备用引擎：`DefaultIM=rime` 时不会被选中，只有 rime 加载失败才顶上，
-  或用 `Ctrl+Space` 轮换时才切得到。所以 `input` 组必须装全 —— 缺 `fcitx5-rime` 时
+  或者用 `fcitx5-remote -s pinyin` / configtool 手动选才切得到。所以 `input` 组必须装全 —— 缺 `fcitx5-rime` 时
   `DefaultIM=rime` 会静默回落到拼音，能打字但左 Shift 失效。
   `fcitx5-chinese-addons` 也不能卸，`chttrans.conf`（简繁）与 `punctuation.conf`（标点）来自它。
 - 全新安装首次启动会编译雾凇词库，可能卡十几秒；没编完就 `fcitx5-remote -r`，或在托盘菜单里点「重新部署」。

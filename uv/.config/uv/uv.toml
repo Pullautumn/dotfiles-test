@@ -1,0 +1,15 @@
+# uv 用户级配置。
+#
+# 这个 `uv` stow 包**只在作者机器上被链接**（见 setup/lib/config.sh 末尾对
+# STOW_PACKAGES 的条件追加）。原因：镜像源跟地理位置绑定，清华源对海外用户是
+# 减分项，而 stow 是整包链接 —— 包一旦进了主列表，所有人都会被塞进这个源。
+#
+# 想临时换源不要改这个文件，用环境变量（优先级高于用户级配置）：
+#   UV_DEFAULT_INDEX=https://pypi.org/simple uv pip install ...
+#
+# 语法参考：https://docs.astral.sh/uv/reference/settings/#index
+#   `default = true` 会同时禁用 PyPI 默认索引，所以只留这一个就够。
+
+[[index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true

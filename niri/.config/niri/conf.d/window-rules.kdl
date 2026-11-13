@@ -211,4 +211,22 @@ layer-rule {
     }
 }
 
+// swaync：浮动通知与控制中心是两个独立的 layer surface，namespace 由
+// gtk-layer-shell 设置，只能分开写。圆角比 swaync/style.css 大 2px
+// （18 → 20、22 → 24）：niri 裁的是 surface 物理角，裁得比 CSS 小会把圆角切出直角。
+//
+// 两条规则都**刻意不加 blur**：这两个 surface 都锚 top+bottom，实际是
+// 「右侧整列、接近全高」的透明层，卡片只占顶部一小块。而 niri 的 blur 按
+// surface 矩形生效、不看逐像素 alpha —— 一旦挂上，通知一弹出右侧整片壁纸
+// 就被糊掉。卡片背景是 alpha(@sn_1, 0.94)、控制中心 0.96，本身足够实。
+layer-rule {
+    match namespace="^swaync-notification-window$"
+    geometry-corner-radius 20
+}
+
+layer-rule {
+    match namespace="^swaync-control-center$"
+    geometry-corner-radius 24
+}
+
 

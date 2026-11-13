@@ -471,9 +471,75 @@ setup_matugen() {
     log "Default colors restored (matugen not run on first install)"
 }
 
+# gsettings 的容错封装：安装器可能跑在纯 TTY（没有 dconf 会话连接），
+# 直连失败时套一层 dbus-run-session 再试一次。成功返回 0。
+_gsettings_set() {
+    gsettings set "$@" 2>/dev/null && return 0
+    command_exists dbus-run-session || return 1
+    dbus-run-session -- gsettings set "$@" 2>/dev/null
+}
+
+# Nautilus 右键「在终端中打开」→ kitty
+#
+# Nautilus 43 之后原生菜单项不可配置，改由 nautilus-open-any-terminal 自己注册一个，
+# 终端名由它的 gsettings 键决定（schema 由该 AUR 包装到 /usr/share/glib-2.0/schemas）。
+#
+# 这一段单独成函数、并且放在 is_done 判断之前：它出过一次「只打印一句 WARN 就跳过」的事故
+# （包其实已经装好，但那一刻 gsettings 还看不见 schema → 走了 else 分支），
+# 结果右键菜单一直指向默认的 gnome-terminal —— 而 gnome-terminal 根本没装，点了毫无反应。
+# 单独拎出来（不受 setup_desktop_tweaks 的 is_done 短路约束）是为了让**重跑安装器**能把它修回来，
+# 而不是只在全新安装时试一次。
+setup_nautilus_terminal() {
+    command_exists gsettings || return 0
+
+    local naut_schema=com.github.stunkymonkey.nautilus-open-any-terminal
+    local naut_xml="/usr/share/glib-2.0/schemas/${naut_schema}.gschema.xml"
+
+    # 能不能用，以 gsettings 看得见为准（扩展读的也是这个）。
+    # 包装好但 gschemas.compiled 还是旧的（pacman 钩子没跑 / 缓存被覆盖）时，
+    # list-schemas 会漏掉它，这里补一次编译再判。
+    if ! gsettings list-schemas 2>/dev/null | grep -qx "$naut_schema"; then
+        if [[ -f "$naut_xml" ]]; then
+            print_info "schema 缓存里没有 $naut_schema，重新编译 ..."
+            sudo glib-compile-schemas /usr/share/glib-2.0/schemas >/dev/null 2>&1 || true
+        fi
+    fi
+
+    if ! gsettings list-schemas 2>/dev/null | grep -qx "$naut_schema"; then
+        print_warn "未找到 nautilus-open-any-terminal 的 schema（包可能没装上）"
+        print_info "补装: paru -S nautilus-open-any-terminal"
+        print_info "仍看不到就手动 sudo glib-compile-schemas /usr/share/glib-2.0/schemas"
+        return 0
+    fi
+
+    if ! _gsettings_set "$naut_schema" terminal kitty; then
+        print_warn "Nautilus 右键终端设置失败，登录后手动执行："
+        print_info "gsettings set $naut_schema terminal kitty"
+        return 0
+    fi
+
+    # 菜单文案统一成「打开终端」，不显示具体终端名
+    _gsettings_set "$naut_schema" use-generic-terminal-name true || true
+
+    # 以读回值为准：set 返回 0 但 dconf 没落地的情况也见过（纯 TTY 装机走的是
+    # dbus-run-session 兜底，写的是临时会话的 dconf）。
+    local cur
+    cur=$(gsettings get "$naut_schema" terminal 2>/dev/null)
+    if [[ "$cur" == "'kitty'" ]]; then
+        print_ok "Nautilus 右键终端已设为 kitty"
+    else
+        print_warn "Nautilus 右键终端读回为 ${cur:-空}，未生效"
+        print_info "登录图形会话后手动执行: gsettings set $naut_schema terminal kitty"
+    fi
+}
+
 # 桌面环境的一次性系统设置（不属于 dotfiles）
 setup_desktop_tweaks() {
     section "Phase 8b" "Desktop Tweaks"
+
+    # 放在 is_done 判断**之前**：已装机的机器上这个函数早就是 done 了，
+    # 放后面等于新加的修正永远轮不到执行。
+    setup_nautilus_terminal
 
     if is_done "setup_desktop_tweaks"; then
         print_skip "Desktop tweaks (already done)"
@@ -499,11 +565,17 @@ setup_desktop_tweaks() {
         print_ok "默认终端设为 kitty（原有条目已保留）"
     fi
 
+    # Nautilus 右键终端见上方 setup_nautilus_terminal（不受 is_done 约束）
+
     # 去掉窗口标题栏的按钮（niri 无边框）
+    # 同样走 _gsettings_set：纯 TTY 装机时直连 dconf 会失败，靠 dbus-run-session 兜底。
     if command_exists gsettings; then
-        gsettings set org.gnome.desktop.wm.preferences button-layout ":close" 2>/dev/null \
-            && print_ok "窗口按钮布局已设置" \
-            || print_warn "gsettings 设置失败（缺少 dconf？）"
+        if _gsettings_set org.gnome.desktop.wm.preferences button-layout ":close"; then
+            print_ok "窗口按钮布局已设置"
+        else
+            print_warn "窗口按钮布局设置失败，登录后手动执行："
+            print_info "gsettings set org.gnome.desktop.wm.preferences button-layout ':close'"
+        fi
     fi
 
     # ddcutil 外接显示器亮度控制需要 i2c 权限
@@ -556,7 +628,10 @@ enable_services() {
         return
     fi
 
-    local services=("NetworkManager" "bluetooth")
+    # power-profiles-daemon：waybar 的 power-profiles-daemon 模块查的就是它的 D-Bus。
+    # 它是 Type=dbus + WantedBy=graphical.target，enable 有效（不会出现「没有安装配置」的假失败）；
+    # 不装或没启，模块只是一直空白，不会报错——所以必须显式列进来。
+    local services=("NetworkManager" "bluetooth" "power-profiles-daemon")
 
     local service unit
     for service in "${services[@]}"; do

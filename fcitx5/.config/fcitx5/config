@@ -11,7 +11,12 @@ EnumerateSkipFirst=False
 ModifierOnlyKeyTimeout=250
 
 [Hotkey/TriggerKeys]
-0=Control+space
+# 中英切换：单按左 Shift（上游默认 Control+space）。
+# 判定窗口由上面的 ModifierOnlyKeyTimeout 控制，Shift+A 这类组合不会误触发。
+# 只改这里不够 —— Rime 的 ascii_composer/switch_key 默认把 Shift_L 用作 inline_ascii，
+# 会把 Shift 先截走。必须同时把 local-share-fcitx5 那份 default.custom.yaml
+# 里的 Shift_L / Shift_R 设成 noop，否则表现为「临时英文」而不是切换输入法。
+0=Shift_L
 1=Zenkaku_Hankaku
 2=Hangul
 
@@ -22,13 +27,20 @@ ModifierOnlyKeyTimeout=250
 0=Hangul_Romaja
 
 [Hotkey/AltTriggerKeys]
-0=Shift+Shift_R
+# 备用切换键：右 Shift。原写法 Shift+Shift_R 里的 Shift+ 是冗余的，
+# fcitx5 会把修饰键 normalize 掉，等价于 Shift_R，这里写成规范形式。
+# 注意右 Shift 比左 Shift 多一层 canAltTrigger() 判定：输入法已经关闭、
+# 且上次不是它自己关的时候直接返回 false，按了没反应。所以主用左手。
+0=Shift_R
 
 [Hotkey/EnumerateGroupForwardKeys]
-0=Super+space
+# 切换输入法组。本仓库 profile 只有一组，实际不会被触发。
+# 原来是 Super+space，但 niri 的 Mod+Space（当前窗口浮动）会先吃掉，fcitx5 收不到。
+# 顺手改成 Ctrl+space 让它真正可用（也就意味着 Ctrl+space 不再切中英）。
+0=Control+space
 
 [Hotkey/EnumerateGroupBackwardKeys]
-0=Shift+Super+space
+0=Shift+Control+space
 
 [Hotkey/PrevPage]
 0=Up

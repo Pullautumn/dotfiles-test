@@ -41,13 +41,30 @@
 截图模块三个鼠标键：左键调 `screenshot.sh`，中键调 `wayscrollshot`（滚动长截图），
 右键开 `qs-popup screenshot-toolbox`。录屏模块左键开关、中键暂停、右键开录制设置。
 
+## 保持唤醒按钮（`custom/swayidle-toggle`）
+
+本模块自己不判断任何状态，只是一个壳，全部逻辑在
+`~/.config/scripts/idle-toggle.sh`（`return-type: json`，返回 `text` / `class` /
+`tooltip`）：
+
+- 💤 深色 = 允许休眠；☕ 橘色（`class: paused`）= 保持唤醒
+- 左键切换，右键 `loginctl lock-session`（保持唤醒时仍然能立刻锁屏）
+- 真实开关是 `$XDG_RUNTIME_DIR/idle-paused`，读它的是 `niri/scripts/swayidle.sh`
+  里的 `gate()`；点击后脚本发 `SIGRTMIN+7` 让本模块立刻重跑，`interval: 30` 只是兜底
+
+**不要改回 `systemctl --user start/stop swayidle.service`**：swayidle 由 niri
+autostart 直接 spawn，根本没有这个 unit。旧版按钮因此变成「显示已禁用、实际照样
+锁屏」——最坏的那种坏法，状态栏在撒谎。
+
 ## 改完怎么生效
 
 ```bash
-killall -SIGUSR2 waybar    # 重载配置与样式
-# 或者整体重启
-pkill waybar && waybar &
+killall -SIGUSR2 waybar   # 重载 config + style（原地，PID 不变）
+killall -SIGUSR1 waybar   # 显示/隐藏状态栏，不是重载样式！
 ```
+
+`Mod+Shift+F4` 绑的就是 `killall -SIGUSR1 waybar`。改完样式若个别模块外观没跟上，
+重启 waybar 最稳。
 
 `waybar` 在 `style.css` 里开了 `reload_style_on_change`，改 CSS 会自动重载，改 `config.jsonc` / `modules.jsonc` 需要上面的信号。
 

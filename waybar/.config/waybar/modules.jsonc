@@ -21,7 +21,9 @@
         "format": "󰜮{bandwidthDownBytes} 󰜷{bandwidthUpBytes}",
         "format-disconnected": "󰹸断开",
         "tooltip-format": "下载: {bandwidthDownBytes}\n上传: {bandwidthUpBytes}",
-        "interval": 1
+        // 带宽是两次采样的差值均速，2s 只影响刷新频率、不影响算得准不准。
+        // 1s 会让整条 bar 每秒重绘一次，白白多一倍唤醒。
+        "interval": 2
     },
     //截图
     "custom/screenshot": {
@@ -43,11 +45,21 @@
         "on-click-right": "~/.config/scripts/wf-recorder.sh settings", // 右键：录制设置
         "on-click-middle": "~/.config/scripts/wf-recorder.sh pause-toggle"
     },
+    // 保持唤醒开关。状态与开关逻辑全在 ~/.config/scripts/idle-toggle.sh，
+    // 它只维护 $XDG_RUNTIME_DIR/idle-paused；真正读这个标记的是
+    // niri/scripts/swayidle.sh 里的 gate()。
+    // 别改回 `systemctl --user start/stop swayidle.service` —— 那个 unit 不存在
+    // （swayidle 由 niri autostart 直接 spawn），旧版按钮正是因此「显示已禁用、
+    // 实际照样锁屏」。
+    // 右键保留手动锁屏：保持唤醒时 Mod+Alt+L / 这个按钮仍能立刻锁。
     "custom/swayidle-toggle": {
-        "exec": "bash -c 'if [[ -f /tmp/swayidle-disabled ]]; then echo -e \"☕\\n保持唤醒：屏幕常亮，不锁屏\"; else echo -e \"💤\\n允许休眠：5分钟后自动锁屏\"; fi'",
-        "on-click": "bash -c 'if [[ -f /tmp/swayidle-disabled ]]; then rm -f /tmp/swayidle-disabled; systemctl --user start swayidle.service; notify-send \"💤 已恢复锁屏\" \"5分钟后自动息屏\"; echo -e \"💤\\n允许休眠：5分钟后自动锁屏\"; else touch /tmp/swayidle-disabled; systemctl --user stop swayidle.service; notify-send \"☕ 已禁用锁屏\" \"屏幕保持常亮\"; echo -e \"☕\\n保持唤醒：屏幕常亮，不锁屏\"; fi'",
-        "interval": 60,
-        "tooltip": true
+        "exec": "~/.config/scripts/idle-toggle.sh status",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 7, // 与脚本里的 WAYBAR_SIG 对应：点击后立刻刷新
+        "tooltip": true,
+        "on-click": "~/.config/scripts/idle-toggle.sh toggle",
+        "on-click-right": "loginctl lock-session"
     },
     "mpris": {
         "player-icons": {

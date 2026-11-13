@@ -41,6 +41,17 @@
 | `screenshot.sh` | 选区截图直接进剪贴板（`grim` + `slurp`，三行） | 三套状态栏的截图按钮 |
 | `wf-recorder.sh` | 录屏主控：`waybar` 出状态 JSON，`start` / `stop` / `pause-toggle` / `settings` | 三套状态栏的录屏按钮、quickshell 录屏面板 |
 | `terminal-launcher` | 按 `$TERMINAL` 打开终端，屏蔽 kitty / ghostty / foot / alacritty / wezterm 等参数差异；`--float` 开 1200×1000 浮动窗 | `waybar-quickshell` 的终端 / CPU / 内存 / 网络按钮 |
+| `idle-toggle.sh` | 空闲策略开关：维护 `$XDG_RUNTIME_DIR/idle-paused`，让 niri 的 `swayidle.sh` 停止/恢复锁屏熄屏挂起。`status` 出 waybar JSON，`toggle` 切换 | 主 waybar 的 ☕ 按钮（左键切换、右键 `loginctl lock-session`） |
+
+### idle-toggle.sh
+
+放在 T1 而不是 `niri/scripts`，是因为「状态」有两个调用方：写它的是状态栏按钮，
+读它的是 swayidle。标记文件**不放 /tmp**——`/run/user/<uid>` 是 tmpfs，注销即清；
+早期版本用的 `/tmp/swayidle-disabled` 会跨重启残留，把新会话的锁屏莫名关掉。
+
+读这个标记的是 `niri/scripts/swayidle.sh` 里的 `gate()`，它把三条 timeout 包成
+`test ! -e <flag> && { … }`。手动锁屏（`Mod+Alt+L` → logind `lock` 事件）和
+`before-sleep` **不套 gate**：保持唤醒时也要能手动锁，合盖回来后也仍然要密码。
 
 ## terminal-launcher
 

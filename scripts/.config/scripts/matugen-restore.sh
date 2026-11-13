@@ -10,6 +10,7 @@ RESTORE_LIST=(
     "btop/themes/catppuccin_mocha.theme"
     "fastfetch/config.jsonc"
     "fuzzel/colors.ini"
+    "swaync/colors.css"
     "swayosd/colors.css"
     "waybar-niri-Win11Like/colors.css"
     "wlogout/colors.css"

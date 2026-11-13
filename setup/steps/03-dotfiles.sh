@@ -101,18 +101,71 @@ _dotfiles_stow_all() {
     done
 }
 
-# 壁纸目录：单独链接，不作为 stow 包
+# 清空仓库里残留的壁纸（非作者用户不需要）。只动仓库这个目录，不碰 ~/Pictures。
+_dotfiles_clear_repo_wallpapers() {
+    local dir="$1"
+    local owner="$2"
+
+    [[ -n "$dir" && -d "$dir" && ! -L "$dir" ]] || return 0
+
+    local n=0
+    n=$(find "$dir" -mindepth 1 -maxdepth 1 ! -name 'README.md' 2>/dev/null | wc -l || true)
+    (( n == 0 )) && return 0
+
+    if find "$dir" -mindepth 1 -maxdepth 1 ! -name 'README.md' -exec rm -rf {} + 2>/dev/null; then
+        print_info "壁纸: 已清空仓库内的 $n 项（非 $owner 用户不需要）"
+    else
+        print_warn "壁纸: 清空仓库内壁纸失败，可手动删除 $dir"
+    fi
+}
+
+# 壁纸目录：单独链接，不作为 stow 包。
+#
+# 壁纸图片**不进 git**（9 张 35 MB，见 .gitignore）。原因：git 只能整仓下载，图一旦
+# 提交，每个 clone 的人都要付这份体积，没法按用户名分流。所以：
+#   - $LEGACY_USER（默认 pullautumn）以外的人：清空仓库里残留的图，只建一个空目录
+#   - 作者本人：仓库里有图就直接链接；没有（换机器 / 重新 clone）就把备份放回去
 _dotfiles_link_wallpapers() {
+    local wallpaper_dir="$DOTFILES_DIR/wallpaper/Pictures/Wallpapers"
     local src=""
-    if [[ -d "$DOTFILES_DIR/wallpaper/Pictures/Wallpapers" ]]; then
-        src="$DOTFILES_DIR/wallpaper/Pictures/Wallpapers"
+    if [[ -d "$wallpaper_dir" ]]; then
+        src="$wallpaper_dir"
     elif [[ -d "$DOTFILES_DIR/wallpapers" ]]; then
         src="$DOTFILES_DIR/wallpapers"
     fi
-    [[ -n "$src" ]] || return 0
+
+    local owner="${LEGACY_USER:-pullautumn}"
+    local me="${TARGET_USER:-$(id -un)}"
 
     mkdir -p "$HOME/Pictures"
     local dst="$HOME/Pictures/Wallpapers"
+
+    # 不是作者就到此为止，一个字节都不链接
+    if [[ "${me,,}" != "${owner,,}" ]]; then
+        # 只清空 wallpaper/Pictures/Wallpapers。`wallpapers/`（模糊图、头像等杂项）
+        # 只是链接的备选源，不是被忽略的目录，绝不能删 —— 24 个文件一删就没了。
+        if [[ "$src" == "$wallpaper_dir" ]]; then
+            _dotfiles_clear_repo_wallpapers "$src" "$owner"
+        fi
+        mkdir -p "$dst"
+        print_skip "壁纸 (仅 $owner 使用，跳过；自行往 $dst 放图)"
+        return 0
+    fi
+
+    [[ -n "$src" ]] || return 0
+
+    # 作者本人：换了机器 / 重新 clone 后目录里只剩 README，链过去是个空壁纸夹。
+    # 这种情况只建目录并提示放回备份，不覆盖用户自己的 ~/Pictures/Wallpapers。
+    local count=0
+    count=$(find "$src" -maxdepth 1 -type f \
+        \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \) \
+        2>/dev/null | wc -l || true)
+    if (( count == 0 )); then
+        mkdir -p "$dst"
+        print_info "壁纸: 仓库里没有图 ${DIM}(把备份放回 $src 再跑一次)${NC}"
+        return 0
+    fi
+    print_info "壁纸: 检测到 $count 张图，链接到 $dst"
 
     # 已存在的真实目录先改名备份；移不动就放弃建链，绝不动用户原目录
     if [[ -d "$dst" && ! -L "$dst" ]]; then
@@ -200,11 +253,48 @@ _dotfiles_generate_bookmarks() {
     out_dir=$(dirname "$out")
     [[ -d "$out_dir" ]] || return 0
 
+    # 顺序即侧边栏顺序
+    local -a rels=(Code dotfiles Downloads Documents Pictures Music Videos)
+
+    # 作者机器上额外固定 ~/.config 和 ~/.local（改配置时一步点到）。这是个人习惯而不是
+    # 发行版该有的默认，所以按 LEGACY_USER（配置作者的用户名）判断，别人的机器上不塞
+    # 这两条 —— .config/.local 对普通用户只是噪音，还容易被误点删掉东西。
+    if [[ "${TARGET_USER,,}" == "${LEGACY_USER,,}" ]]; then
+        rels+=(.config .local)
+    fi
+
     local -a lines=()
-    local rel
-    # 顺序即侧边栏顺序；目录不存在就不写，免得点进去报错
-    for rel in Code dotfiles Downloads Documents Pictures Music Videos; do
-        [[ -d "$HOME/$rel" ]] && lines+=("file://$HOME/$rel $rel")
+    local rel p const
+    for rel in "${rels[@]}"; do
+        case "$rel" in
+            Downloads|Documents|Pictures|Music|Videos)
+                # 标准 XDG 目录**在安装阶段通常还不存在** —— 它们由首次登录时的
+                # xdg-user-dirs-update 创建，而书签是 Phase 3 生成的。原实现只判
+                # `[[ -d ]]` 就跳过，于是侧边栏只剩安装途中顺带建出来的 ~/Pictures
+                # 一项（壁纸链接那个），其余全丢。这里问 xdg-user-dir 要真实路径
+                # （本地化目录名也能对上），再补建目录，不依赖登录时机。
+                case "$rel" in
+                    Downloads) const=DOWNLOAD ;;                       # 单数，别想当然
+                    *)          const=$(printf '%s' "$rel" | tr '[:lower:]' '[:upper:]') ;;
+                esac
+                p=""
+                if command_exists xdg-user-dir; then
+                    p=$(xdg-user-dir "$const" 2>/dev/null) || p=""
+                fi
+                # xdg-user-dir 查不到会返回 $HOME，那等于没配这个目录
+                [[ -n "$p" && "$p" != "$HOME" ]] || p="$HOME/$rel"
+                mkdir -p "$p" 2>/dev/null || continue
+                ;;
+            dotfiles)
+                # 仓库目录两种习惯都认：~/dotfiles（软链）和 ~/.dotfiles（clone 默认名）
+                p="$HOME/dotfiles"
+                [[ -d "$p" ]] || p="$HOME/.dotfiles"
+                ;;
+            *)
+                p="$HOME/$rel"
+                ;;
+        esac
+        [[ -d "$p" ]] && lines+=("file://$p $rel")
     done
 
     if (( ${#lines[@]} == 0 )); then
@@ -261,6 +351,9 @@ apply_dotfiles() {
     # 放在 is_done 之前，重跑安装器就能修好，不必 --reset 清掉全部标记。
     if is_done "apply_dotfiles"; then
         _dotfiles_fix_permissions
+        # 书签同理：纯生成物、幂等、不依赖 stow。放这里，早期版本装出来的半截书签
+        # （只有 ~/Pictures 一项）重跑一次安装器就能补齐。
+        _dotfiles_generate_bookmarks
         print_skip "Dotfiles applied (already done)"
         return
     fi

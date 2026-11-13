@@ -19,7 +19,7 @@ setup/
   steps/
     01-preflight.sh     系统检查、基础工具、paru、定位仓库
     02-packages.sh      必需软件分组安装、AUR、可选软件 fzf 勾选（装包带转圈进度）
-    03-dotfiles.sh      备份旧配置、stow 部署、壁纸链接、GTK 书签生成
+    03-dotfiles.sh      备份旧配置、stow 部署、壁纸链接（仅作者）、GTK 书签生成
     04-apps.sh          nvim / zsh / mpv / yazi
     05-system.sh        locale、PATH、PAM、matugen、系统服务、SDDM、用户目录
     99-completion.sh    完成提示与重启
@@ -38,7 +38,7 @@ setup/
 | `clone_dotfiles` | 01 | 本地运行直接用当前仓库，否则克隆到 `~/.dotfiles` |
 | `install_packages` | 02 | 按 `PKG_GROUPS` 分组装必需包（已装的组直接记 OK），再逐包装必需的 AUR 包，全程不询问；失败包名上屏并写 `~/pullautumn-missing-packages.txt`，末尾用 `pacman -T` 复核（包组先展开，避免组名误报） |
 | `install_optional_packages` | 02 | 读 `common-applist.txt`，fzf 勾选后按 repo / AUR / flatpak 分类安装（`--yes` 则全装） |
-| `apply_dotfiles` | 03 | 备份 → stow → 壁纸链接 → 权限 → 用户名替换 → flatpak 覆盖。已部署过时 stow 跳过，但**执行位仍会补修一次**（x 位易丢，重跑即可修，不必 `--reset`） |
+| `apply_dotfiles` | 03 | 备份 → stow → 壁纸链接（仅作者，其他人只建空目录） → 权限 → 生成 GTK 书签 → flatpak 覆盖。已部署过时 stow 跳过，但**执行位仍会补修一次**（x 位易丢，重跑即可修，不必 `--reset`） |
 | `setup_nvim` | 04 | 装 neovim，同步 LazyVim 插件 |
 | `setup_zsh` | 04 | 装 zsh，改默认 shell（配置由 zshenv/zsh 包提供） |
 | `setup_mpv` | 04 | 装 mpv，可选下载 Anime4K（`gh_clone` 带 3 次重试） |
@@ -49,7 +49,7 @@ setup/
 | `setup_qs_lock_pam` | 05 | 创建 `/etc/pam.d/qs-lock`（缺 howdy 时**询问是否安装**人脸识别，有 howdy 再加 `qs-lock-face` 并自动探测 `pam_howdy.so` / `pam_python.so`）。**每次运行都检查，不受 `is_done` 短路**，补装 howdy 后重跑即可 |
 | `setup_quickshell` | 05 | 兜底 `Theme.js`、`uv sync`、注册 `qs-notifications.service` |
 | `setup_matugen` | 05 | 用当前壁纸生成 Material You 配色 |
-| `setup_desktop_tweaks` | 05 | 默认终端、窗口按钮、i2c 权限 |
+| `setup_desktop_tweaks` | 05 | 默认终端（kitty）、Nautilus 右键终端、窗口按钮、i2c 权限 |
 | `enable_services` | 05 | NetworkManager / bluetooth / swayosd。蓝牙走「enable → 单独 start → 自检」三步，不用 `enable --now`：bluez 的 unit 带 `ConditionPathIsDirectory=/sys/class/bluetooth`，内核模块没加载时启动会被静默跳过却仍返回 0。未运行则置 `BT_SELFCHECK_FAILED`，由完成页提示补救命令 |
 | `setup_sddm` | 05 | 装 SDDM + lunar-glass 主题，写 `/etc/sddm.conf.d/` drop-in，最后做只读自检（主题 / greeter / qt5-svg / drop-in / 自启），不通过则不标记完成 |
 | `setup_user_dirs` | 05 | 建 `~/Pictures/Wallpapers` 等目录 |
@@ -178,7 +178,7 @@ rm -rf ~/.local/share/pullautumn/gh-mirror
 | 需求 | 位置 |
 |---|---|
 | 换仓库地址 | `lib/config.sh` 的 `DOTFILES_REPO` |
-| 增删 stow 包 | `lib/config.sh` 的 `STOW_PACKAGES` |
+| 增删 stow 包 | `lib/config.sh` 的 `STOW_PACKAGES`（`uv` 是条件包，在数组之后按 `LEGACY_USER` 追加） |
 | 增删**必需**软件 | `lib/config.sh` 的 `PKG_GROUPS` / `AUR_PACKAGES` |
 | 增删**可选**软件 | `setup/common-applist.txt`（改这个文件即可，不用动脚本） |
 | 改某个阶段的逻辑 | 对应的 `steps/*.sh` |
@@ -188,15 +188,38 @@ rm -rf ~/.local/share/pullautumn/gh-mirror
 ## 配置部署的几个特殊处理
 
 - **mimeapps** 用绝对路径链接，因为桌面环境会直接写这个文件，避免写穿 stow 链接。
-- **wallpaper/** 不走 stow，单独链接到 `~/Pictures/Wallpapers`。
+- **wallpaper/** 不走 stow，单独链接到 `~/Pictures/Wallpapers`。图片不进 git（9 张 35 MB），
+  所以这条只在作者机器上成立：`TARGET_USER` 不等于 `LEGACY_USER`（默认 `pullautumn`）时，
+  安装器会清空仓库里残留的图、只建一个空的 `~/Pictures/Wallpapers`。细则见
+  `wallpaper/Pictures/Wallpapers/README.md`。
 - **家目录路径**：配置里能自解析的都写成了 `~` / `$HOME` / `vim.fn.expand`，不再做批量替换。
   仅 GTK 书签由 `_dotfiles_generate_bookmarks` 按 `$HOME` 现生成；niri 的 `screenshot-path`
   写成 `~`，由 niri 自己展开并在缺失时自动创建目录。
+  > 书签就是 **Nautilus 侧边栏的固定目录清单**（实测 51.1 不会自动列出标准 XDG 目录）。
+  > 标准目录由首次登录的 `xdg-user-dirs-update` 创建，而书签在 Phase 3 就生成 ——
+  > 所以生成函数先用 `xdg-user-dir` 查路径再 `mkdir -p` 补建，只判 `[[ -d ]]` 的老写法
+  > 会只剩安装途中顺带建出来的 `~/Pictures` 一项。该函数也挂在 `apply_dotfiles` 的
+  > is_done 短路里，重跑安装器能把半截书签补齐。
   > 早先版本用 `sed` 替换 `readlink -f` 解析出的文件，那实际是在改仓库（stow 会把
   > `~/.config/*` 折叠成指向仓库的软链），会把 `~/dotfiles` 改写成别人的用户名，已移除。
 - **备份**：`~/.config/*` 下的同名配置会先移到 `~/.config-backup-<时间戳>`。
 - **waybar-niri-Win11Like** 部署到独立目录 `~/.config/waybar-niri-Win11Like`，与主 waybar 不冲突；
   和主配置一起部署，用 `Mod+F2` / `Mod+F3` 切换两套样式。
+
+## 只有作者机器才生效的配置
+
+三处都拿 `TARGET_USER`（`id -un`）与 `LEGACY_USER`（默认 `pullautumn`，可用环境变量
+`LEGACY_USER=xxx ./install.sh` 覆盖）比较，两边都小写化 —— 因为 MSYS 下 `id -un` 首字母
+可能大写。这是唯一按用户名分流的地方，别的配置不做任何「作者 / 别人」区分。
+
+| 位置 | 作者本人 | 其他人 |
+|---|---|---|
+| `_dotfiles_link_wallpapers` | 把仓库壁纸链到 `~/Pictures/Wallpapers` | 清空仓库里残留的图，只建一个空目录 |
+| `STOW_PACKAGES` 末尾的 `uv` 追加 | 多一份 `~/.config/uv/uv.toml`（清华 PyPI 源） | 不部署这个包 |
+| `_dotfiles_generate_bookmarks` | 侧栏多 `.config`、`.local` 两项 | 只有 6 项 |
+
+`uv` 的**二进制**不在条件里：它在 `AUR_PACKAGES` 中，所有人都会装（`setup_quickshell`
+的 `uv sync` 要用）；只有镜像配置是作者专属 —— 清华源跟地理位置绑定，对海外用户是减分项。
 
 ## 与上游的区别
 
@@ -206,3 +229,13 @@ rm -rf ~/.local/share/pullautumn/gh-mirror
 - 新增 `--yes` / `--no-reboot` 参数。
 - 蓝牙服务改成「enable → 单独 start → 自检」：上游用 `enable --now`，而 bluez 的 `ConditionPathIsDirectory` 不满足时启动会被静默跳过、命令仍返回 0，日志显示成功但实际没有守护进程。未运行时完成页会给出 `sudo systemctl restart bluetooth`。
 - 可选软件改为独立清单 `common-applist.txt` + fzf 勾选，不再写在脚本里。
+- 新增 Nautilus 右键终端：上游没有。Nautilus 43 之后原生「在终端中打开」不可配置，改由
+  `nautilus-open-any-terminal`（AUR，靠 repo 的 `nautilus-python` 加载）注册菜单项，
+  `setup_nautilus_terminal` 用 gsettings 把终端设为 kitty；纯 TTY 装机会话没有 dconf 连接，
+  失败时自动套 `dbus-run-session` 重试。同时补装 `xdg-terminal-exec`，否则之前只写
+  `~/.config/xdg-terminals.list` 却没有程序读取它。
+  这一步单独成函数、且排在 `setup_desktop_tweaks` 的 `is_done` 短路之前，因为它坑过一次：
+  AUR 包已经装好，但那一刻 `gschemas.compiled` 还没把它的 schema 编进去，`gsettings list-schemas`
+  查不到 → 整段被判成「包没装上」，只打印一句 WARN 就跳过，右键菜单于是停在默认的 `gnome-terminal`
+  （这台机器根本没装它，点了毫无反应）。现在每次运行都会「查不到 schema 就先
+  `glib-compile-schemas` 再查 → 重设 → `gsettings get` 读回校验」，重跑安装器即可自愈。

@@ -1,47 +1,381 @@
-/* 🎯 swaync 右侧半透明通知 - 视觉清晰版 */
-#notification-container {
-    position: fixed !important;
-    right: 0 !important;
-    top: 10px !important;
-    margin-left: auto !important;
-    margin-right: 0 !important;
-    padding-right: 20px !important;
-    background-color: transparent !important;
+/*
+ * swaync 样式（Material You / DMS 风格）
+ *
+ * 结构：colors.css 提供颜色变量（matugen 按壁纸生成），本文件只写结构与字阶。
+ * 换壁纸后只有 colors.css 变，样式不用动。
+ *
+ * 两条硬约定：
+ *   1. 圆角比 niri 的 layer-rule geometry-corner-radius 小 2px。
+ *      niri 裁的是 surface 物理角，裁得比 CSS 还小会把圆角切出直角来。
+ *      （通知 18 / layer 20；控制中心 22 / layer 24）
+ *   2. 不用 text-align: right —— 通知正文右对齐是旧样式最大的视觉问题。
+ */
+@import url("colors.css");
+
+/* 由 surface / on_surface 派生的层级色，不依赖 surface_container_* 是否存在 */
+@define-color sn_1 mix(@surface, @on_surface, 0.07);
+@define-color sn_2 mix(@surface, @on_surface, 0.13);
+@define-color sn_text @on_surface;
+@define-color sn_dim mix(@on_surface, @surface, 0.32);
+@define-color sn_faint mix(@on_surface, @surface, 0.50);
+@define-color sn_line mix(@surface, @on_surface, 0.18);
+@define-color sn_track mix(@surface, @on_surface, 0.14);
+
+/* ============ 基础 ============ */
+* {
+    font-family: "Noto Sans CJK SC", "Noto Sans", "Source Han Sans SC", sans-serif;
+    font-size: 14px;
+    outline: none;
+    text-shadow: none;
+}
+
+/* ============ 浮动通知 ============ */
+.floating-notifications,
+.floating-notifications.background {
+    background: transparent;
+}
+
+.notification-row {
+    background: transparent;
+    outline: none;
+}
+
+.notification-background {
+    background: transparent;
+    margin: 6px 12px;
+    padding: 0;
 }
 
 .notification {
-    background: rgba(30, 30, 46, 0.85) !important; /* 深蓝灰，来自 wal 的 color0 */
-    border-radius: 10px !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
-    margin-left: auto !important;
-    margin-right: 0 !important;
-    text-align: right !important;
-    max-width: 400px !important;
-    padding: 14px 16px !important;
-    border: none !important;
+    background-color: alpha(@sn_1, 0.94);
+    border: 1px solid alpha(@sn_line, 0.65);
+    border-radius: 18px;
+    padding: 14px 16px;
+    color: @sn_text;
+}
+
+.notification.critical {
+    background-color: alpha(mix(@sn_1, @error, 0.18), 0.96);
+    border-color: alpha(@error, 0.60);
+    animation-duration: 1s;
+}
+
+/* ============ 倒计时条 ============
+ * swaync 没有「剩余时间」节点（模板里那个 progressbar 只反映应用上报的
+ * 进度，不是自动消失倒计时），所以这里用 GTK4 的 background-size 动画画一条
+ * 从满宽收到 0 的底部色条。GTK4 能平滑插值 background-size，实测有效。
+ *
+ * 时长必须和 config.json 对齐，改超时就要改这里的秒数：
+ *   timeout          4s  → 默认
+ *   timeout-low      6s  → .low（swaync 是否真的挂这个类不一定，见下）
+ *   timeout-critical 1s  → 写在上面 .notification.critical 里
+ *
+ * 三个已知局限：
+ *   1. 悬停暂停超时时，swaync 停了计时器，CSS 动画不会停（GTK4 没有
+ *      animation-play-state 与 :hover 联动的可靠钩子），色条会先走完。
+ *   2. GTK4 不支持 animation-fill-mode，动画结束后属性回落到基础值，
+ *      所以通知如果活得比动画久，色条会“弹回”满宽。默认/紧急两种超时与
+ *      动画时长一致，不会看到；低优先级(6s)只在动画按 4s 跑时才可能遇到。
+ *   3. 应用自己用 -t 指定超时的通知，色条按固定时长走，不跟着变。
+ */
+@keyframes sn-countdown {
+    from { background-size: 100% 3px; }
+    to   { background-size: 0% 3px; }
+}
+
+.notification {
+    background-image: linear-gradient(to right, @primary 0%, @primary 100%);
+    background-size: 100% 3px;
+    background-position: bottom left;
+    background-repeat: no-repeat;
+    animation: sn-countdown 4s linear;
+}
+
+.notification.low {
+    animation-duration: 6s;
 }
 
 .notification-content {
-    text-align: right !important;
+    margin: 0;
+    padding: 0;
 }
 
-/* 让文字更清晰（如果背景深） */
-.notification-content label,
-.notification-content .body,
-.notification-content .summary {
-    color: #e0e0e0 !important; /* 灰白色文字 */
-    font-weight: 500 !important;
+.notification-content image {
+    -gtk-icon-size: 40px;
+    margin-right: 12px;
 }
 
-/* 关闭按钮 */
+.summary {
+    font-size: 15px;
+    font-weight: 500;
+    color: @sn_text;
+    margin-bottom: 3px;
+}
+
+.body {
+    font-size: 13px;
+    color: @sn_dim;
+}
+
+.time {
+    font-size: 11px;
+    color: @sn_faint;
+    margin-top: 4px;
+}
+
+.body-image {
+    border-radius: 14px;
+    margin-top: 10px;
+}
+
 .close-button {
-    color: #b0b0b0 !important;
-    opacity: 0.7 !important;
+    background: alpha(@sn_2, 0.9);
+    color: @sn_dim;
+    border: none;
+    border-radius: 999px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    margin: 6px;
+    font-size: 12px;
 }
 
 .close-button:hover {
-    color: white !important;
-    opacity: 1 !important;
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    border-radius: 50% !important;
+    background: alpha(@primary, 0.25);
+    color: @sn_text;
+}
+
+/* 动作按钮 */
+.notification-action,
+.notification-default-action {
+    background: transparent;
+    border: none;
+    border-radius: 14px;
+    color: @sn_text;
+    padding: 8px 12px;
+}
+
+.notification-action {
+    background: alpha(@sn_2, 0.85);
+    margin-top: 8px;
+    font-size: 13px;
+}
+
+.notification-action:hover,
+.notification-default-action:hover {
+    background: alpha(@sn_2, 1.0);
+}
+
+/* 内联回复 */
+.inline-reply {
+    margin-top: 8px;
+}
+
+.inline-reply-entry {
+    background: alpha(@sn_2, 0.9);
+    border: 1px solid alpha(@sn_line, 0.7);
+    border-radius: 12px;
+    color: @sn_text;
+    caret-color: @primary;
+    padding: 6px 10px;
+}
+
+.inline-reply-button {
+    background: alpha(@primary, 0.20);
+    border: none;
+    border-radius: 12px;
+    color: @sn_text;
+    padding: 6px 14px;
+    margin-left: 6px;
+}
+
+.inline-reply-button:hover {
+    background: alpha(@primary, 0.30);
+}
+
+/* ============ 控制中心 ============ */
+.control-center {
+    background-color: alpha(@surface, 0.95);
+    border: 1px solid alpha(@sn_line, 0.55);
+    border-radius: 22px;
+    color: @sn_text;
+    padding: 8px;
+}
+
+.control-center-list,
+.control-center-list-window {
+    background: transparent;
+}
+
+.control-center-list-placeholder {
+    color: @sn_faint;
+    font-size: 13px;
+    padding: 28px 0;
+}
+
+.blank-window {
+    background: transparent;
+}
+
+/* 面板里的通知条目：比浮动卡片扁一点，避免一眼全是卡片；
+   倒计时条在面板里没有意义（不会自动消失），显式关掉 */
+.control-center .notification {
+    background-color: @sn_2;
+    background-image: none;
+    border: none;
+    border-radius: 16px;
+    padding: 12px 14px;
+    animation: none;
+}
+
+.control-center .notification-background {
+    margin: 5px 4px;
+}
+
+/* ============ 组件卡片 ============ */
+.widget-title,
+.widget-mpris,
+.widget-volume,
+.widget-backlight,
+.widget-buttons-grid,
+.widget-dnd {
+    background-color: @sn_1;
+    border-radius: 18px;
+    padding: 12px 14px;
+    margin: 4px 4px 8px 4px;
+    color: @sn_text;
+}
+
+.widget-title > label {
+    font-size: 17px;
+    font-weight: 500;
+    color: @sn_text;
+}
+
+.widget-title > button {
+    background: alpha(@sn_2, 0.9);
+    border: none;
+    border-radius: 14px;
+    color: @sn_text;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.widget-title > button:hover {
+    background: alpha(@primary, 0.22);
+}
+
+/* ---- MPRIS ---- */
+.widget-mpris {
+    background: transparent;
+    padding: 0;
+    margin: 4px 4px 8px 4px;
+}
+
+.widget-mpris-player {
+    background-color: @sn_1;
+    border-radius: 18px;
+    padding: 14px;
+}
+
+.widget-mpris-album-art {
+    border-radius: 14px;
+}
+
+.widget-mpris-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: @sn_text;
+}
+
+.widget-mpris-subtitle {
+    font-size: 12px;
+    color: @sn_dim;
+}
+
+.widget-mpris > box > button {
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    color: @sn_dim;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
+}
+
+.widget-mpris > box > button:hover {
+    background: alpha(@sn_2, 0.9);
+    color: @sn_text;
+}
+
+/* ---- 音量 / 亮度 ---- */
+.widget-volume label,
+.widget-backlight label {
+    font-size: 18px;
+    color: @sn_dim;
+    min-width: 26px;
+    margin-right: 10px;
+}
+
+scale trough {
+    background-color: @sn_track;
+    border: none;
+    border-radius: 3px;
+    min-height: 6px;
+    min-width: 140px;
+}
+
+scale trough highlight {
+    background-color: @primary;
+    border-radius: 3px;
+}
+
+scale slider {
+    background-color: @primary;
+    border: none;
+    border-radius: 999px;
+    min-width: 14px;
+    min-height: 14px;
+    margin: -4px 0;
+}
+
+/* ---- 快捷按钮网格 ---- */
+.widget-buttons-grid {
+    padding: 8px;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+    background-color: alpha(@sn_2, 0.75);
+    border: none;
+    border-radius: 16px;
+    color: @sn_text;
+    font-size: 18px;
+    min-width: 46px;
+    min-height: 46px;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+    background-color: alpha(@primary, 0.22);
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:checked {
+    background-color: alpha(@primary, 0.34);
+}
+
+/* ---- 免打扰开关 ---- */
+.widget-dnd > switch {
+    background: @sn_track;
+    border-radius: 999px;
+    min-width: 42px;
+}
+
+.widget-dnd > switch:checked {
+    background: alpha(@primary, 0.75);
+}
+
+.widget-dnd > switch slider {
+    background: @sn_text;
+    border: none;
+    border-radius: 999px;
 }

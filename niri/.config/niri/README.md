@@ -76,7 +76,7 @@
 | `niri-quick-switch-fuzzel.py` | `Alt+Tab` 的窗口切换菜单 |
 | `niri-binds` | 读取 `binds.kdl` 生成快捷键说明 |
 | `niri-monitor-switch.sh` | 显示器模式切换：quick-settings 面板的后端（`list-json`/`set`/`save`），也支持 `fuzzel` 交互菜单与 `apply` 恢复保存的配置（配置存 `~/.local/state/display/outputs.json`） |
-| `swayidle.sh` | 空闲策略：180s 锁屏 / 300s 熄屏 / 600s 自动挂起；睡前立刻锁屏、唤醒刷脸 |
+| `swayidle.sh` | 空闲策略：180s 锁屏 / 300s 熄屏 / 600s 自动挂起；睡前立刻锁屏、唤醒刷脸。`$XDG_RUNTIME_DIR/idle-paused` 存在时三条 timeout 全部空转（按钮见 `~/.config/scripts/idle-toggle.sh`），但手动锁屏与 `before-sleep` 不受影响 |
 
 截图不在这里出脚本，全部是 `binds.kdl` 里的单行命令（与 jswysnemc 一致）：
 
